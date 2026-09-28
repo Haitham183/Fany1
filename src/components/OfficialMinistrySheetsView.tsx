@@ -42,7 +42,7 @@ export const OfficialMinistrySheetsView: React.FC<OfficialMinistrySheetsViewProp
   schoolConfig,
   currentUser,
 }) => {
-  const [activeSheetTab, setActiveSheetTab] = useState<'sheet_1_ser' | 'register_41' | 'register_5' | 'class_rosters'>('class_rosters');
+  const [activeSheetTab, setActiveSheetTab] = useState<'sheet_1_ser' | 'register_41' | 'register_5' | 'class_rosters'>('sheet_1_ser');
   const [selectedClassId, setSelectedClassId] = useState<string>(classes[0]?.id || '');
   const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('أكتوبر');

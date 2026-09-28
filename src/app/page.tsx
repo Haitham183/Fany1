@@ -415,7 +415,7 @@ function MainAppContent() {
             />
           )}
 
-          {activeTab === 'affairs' && (
+          {(activeTab === 'affairs' || activeTab === 'transfers') && (
             <StudentAffairsView
               students={authorizedStudents}
               classes={authorizedClasses}
@@ -423,6 +423,7 @@ function MainAppContent() {
               attendance={attendance}
               currentUser={currentUser}
               onDataChanged={refreshAllData}
+              initialTab={activeTab === 'transfers' ? 'transfers' : 'weekly_sheet'}
               onNavigateToReport={(studentId) => {
                 setSelectedReportStudentId(studentId);
                 setActiveTab('student_report');
@@ -453,7 +454,7 @@ function MainAppContent() {
             />
           )}
 
-          {activeTab === 'ministry_sheets' && (
+          {(activeTab === 'ministry_sheets' || activeTab === 'official_sheets') && (
             <OfficialMinistrySheetsView
               students={authorizedStudents}
               classes={authorizedClasses}

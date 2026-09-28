@@ -67,6 +67,7 @@ interface StudentAffairsViewProps {
   currentUser: User;
   onDataChanged: () => void;
   onNavigateToReport?: (studentId: string) => void;
+  initialTab?: 'weekly_sheet' | 'student_roster' | 'excuses' | 'transfers';
 }
 
 export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
@@ -77,9 +78,10 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
   currentUser,
   onDataChanged,
   onNavigateToReport,
+  initialTab,
 }) => {
   const [activeTab, setActiveTab] = useState<'weekly_sheet' | 'student_roster' | 'excuses' | 'transfers'>(
-    'weekly_sheet'
+    initialTab || 'weekly_sheet'
   );
   const [selectedClassId, setSelectedClassId] = useState<string>(
     classes[0]?.id || ''
