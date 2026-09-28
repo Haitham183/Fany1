@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { User, SchoolConfig, PortalType } from '@/types';
 import {
@@ -9,23 +11,21 @@ import {
   Building2,
   Sliders,
   UserCheck,
-  Key,
   LogOut,
   ShieldAlert,
-  ShieldCheck,
-  PanelRightClose,
-  PanelRightOpen,
   Award,
   TrendingUp,
-  FileSpreadsheet,
   BookOpen,
   GraduationCap,
-  LayoutGrid,
-  ClipboardList,
-  ChevronDown,
-  ChevronsUpDown,
   BrainCircuit,
   HeartHandshake,
+  PanelRightClose,
+  PanelRightOpen,
+  ArrowRightLeft,
+  CalendarCheck,
+  Layers,
+  Sparkles,
+  Search,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -43,22 +43,20 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   activePortal?: PortalType;
   onSwitchPortal?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 interface NavItem {
   id: string;
   label: string;
-  shortLabel?: string;
   icon: any;
-  badge: string | null;
+  badge?: string | number | null;
   badgeColor?: string;
   visible: boolean;
-  href?: string;
 }
 
 interface NavSection {
-  category: string;
-  icon: any;
+  title: string;
   items: NavItem[];
 }
 
@@ -77,241 +75,289 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
   activePortal,
   onSwitchPortal,
+  onOpenCommandPalette,
 }) => {
-  const isPrincipal = currentUser.role === 'principal';
-  const isDeputy = currentUser.role === 'affairs_deputy';
-  const isOfficer = currentUser.role === 'affairs_officer';
-  const isSocialWorker = currentUser.role === 'social_worker';
-  const isDeptHead = currentUser.role === 'dept_head';
-  const isCompetencyOfficer = !!currentUser.isInternalVerifier;
-  const isTeacher = currentUser.role === 'teacher';
-  const isAffairs = isPrincipal || isDeputy || isOfficer;
+  const role = currentUser.role;
 
-  // Custom permission checks
-  const canAttendance = currentUser.customPermissions?.canTakeAttendance ?? true;
-  const canStudents = currentUser.customPermissions?.canManageStudents ?? (isAffairs || isSocialWorker);
-  const canNotices = currentUser.customPermissions?.canIssueNotices ?? (isAffairs || isSocialWorker);
-  const canSettings = currentUser.customPermissions?.canManageSchoolSettings ?? isPrincipal;
-  const canUsers = currentUser.customPermissions?.canManageUsers ?? isPrincipal;
-  const canDeptReports = isDeptHead || isPrincipal || isDeputy;
-  const canCompetencies = isCompetencyOfficer || (currentUser.customPermissions?.canManageCompetencies ?? true);
-  const canSafety = currentUser.customPermissions?.canLogViolations ?? true;
-  const canViewReports = currentUser.customPermissions?.canViewReports ?? true;
-  const canSocialCases = isSocialWorker || isPrincipal || isDeputy || (currentUser.customPermissions?.canManageSocialCases ?? true);
+  // Build role-tailored focused sections
+  const sections = useMemo<NavSection[]>(() => {
+    const list: NavSection[] = [];
 
-  const navSections: NavSection[] = [
-    {
-      category: 'المتابعة والإحصاء',
-      icon: LayoutDashboard,
+    // 1. TEACHER MENU (Focused on Workshop, CBE, Rosters, Safety)
+    if (role === 'teacher') {
+      list.push({
+        title: 'مهام المعلم والورشة',
+        items: [
+          {
+            id: 'dashboard',
+            label: 'لوحة قيادة المعلم',
+            icon: LayoutDashboard,
+            visible: true,
+          },
+          {
+            id: 'attendance',
+            label: 'تحضير ورشة اليوم ⚡',
+            icon: CalendarCheck,
+            visible: true,
+          },
+          {
+            id: 'competencies',
+            label: 'تقييم الجدارات والأدلة',
+            icon: Award,
+            visible: true,
+          },
+          {
+            id: 'class_rosters',
+            label: 'قوائم الطلاب المعتمدة',
+            icon: BookOpen,
+            visible: true,
+          },
+          {
+            id: 'safety',
+            label: 'سجل السلامة والتزويغ',
+            icon: ShieldAlert,
+            visible: true,
+          },
+        ],
+      });
+      return list;
+    }
+
+    // 2. SOCIAL WORKER MENU (Focused on Cases, Counseling, AI Dropout Risk)
+    if (role === 'social_worker') {
+      list.push({
+        title: 'الرعاية والإرشاد النفسي',
+        items: [
+          {
+            id: 'dashboard',
+            label: 'لوحة الأخصائي الاجتماعي',
+            icon: LayoutDashboard,
+            visible: true,
+          },
+          {
+            id: 'social_portal',
+            label: 'سجل دراسات الحالة والمقابلات',
+            icon: HeartHandshake,
+            badge: socialCasesCount > 0 ? socialCasesCount : null,
+            badgeColor: 'bg-teal-600 text-white',
+            visible: true,
+          },
+          {
+            id: 'ai_prediction',
+            label: 'التنبؤ الذكي بالتسرب (AI)',
+            icon: BrainCircuit,
+            badge: 'AI ✨',
+            badgeColor: 'bg-indigo-600 text-cyan-200',
+            visible: true,
+          },
+          {
+            id: 'safety',
+            label: 'مخالفات السلوك والتزويغ',
+            icon: ShieldAlert,
+            visible: true,
+          },
+        ],
+      });
+      return list;
+    }
+
+    // 3. DEPT HEAD MENU (Focused on Department, Competencies, PRNG Sampling, Safety)
+    if (role === 'dept_head') {
+      list.push({
+        title: 'إدارة التخصص الصناعي',
+        items: [
+          {
+            id: 'dashboard',
+            label: 'لوحة رئيس القسم',
+            icon: LayoutDashboard,
+            visible: true,
+          },
+          {
+            id: 'departments',
+            label: 'متابعة ورش ومعامل القسم',
+            icon: Building2,
+            visible: true,
+          },
+          {
+            id: 'competencies',
+            label: 'مصفوفة الجدارات والتحقق',
+            icon: Award,
+            visible: true,
+          },
+          {
+            id: 'safety',
+            label: 'سلامة الورش والماكينات',
+            icon: ShieldAlert,
+            visible: true,
+          },
+          {
+            id: 'class_rosters',
+            label: 'قوائم فصول التخصص',
+            icon: BookOpen,
+            visible: true,
+          },
+        ],
+      });
+      return list;
+    }
+
+    // 4. AFFAIRS DEPUTY / OFFICER (Focused on Students, Notices Law 139, Census, Sheets)
+    if (role === 'affairs_deputy' || role === 'affairs_officer') {
+      list.push({
+        title: 'الانضباط والمادة 25',
+        items: [
+          {
+            id: 'dashboard',
+            label: 'لوحة شئون الطلاب',
+            icon: LayoutDashboard,
+            visible: true,
+          },
+          {
+            id: 'notices',
+            label: 'الإنذارات وقرارات الفصل',
+            icon: ShieldAlert,
+            badge: noticesCount > 0 ? noticesCount : null,
+            badgeColor: 'bg-red-600 text-white',
+            visible: true,
+          },
+          {
+            id: 'census',
+            label: 'الإحصاء الصباحي (5 مواظبة)',
+            icon: TrendingUp,
+            visible: true,
+          },
+          {
+            id: 'official_sheets',
+            label: 'دفتر 41 وسجلات الوزارة',
+            icon: FileText,
+            visible: true,
+          },
+        ],
+      });
+
+      list.push({
+        title: 'سجلات الطلاب والقيد',
+        items: [
+          {
+            id: 'affairs',
+            label: 'سجل وقيد الطلاب',
+            icon: Users,
+            visible: true,
+          },
+          {
+            id: 'class_rosters',
+            label: 'قوائم الفصول المعتمدة',
+            icon: BookOpen,
+            visible: true,
+          },
+          {
+            id: 'transfers',
+            label: 'سجل التحويلات والنقل',
+            icon: ArrowRightLeft,
+            visible: true,
+          },
+          {
+            id: 'student_report',
+            label: 'ملف الطالب والشهادات',
+            icon: GraduationCap,
+            visible: true,
+          },
+        ],
+      });
+      return list;
+    }
+
+    // 5. PRINCIPAL & ADMIN (Full Executive Control & System Hub)
+    list.push({
+      title: 'مركز القيادة والمتابعة',
       items: [
         {
           id: 'dashboard',
-          label: 'لوحة القيادة والمؤشرات',
+          label: 'لوحة القيادة والقرارات',
           icon: LayoutDashboard,
-          badge: null,
           visible: true,
         },
         {
           id: 'census',
           label: 'الإحصاء الصباحي (5 مواظبة)',
           icon: TrendingUp,
-          badge: null,
-          visible: canViewReports,
+          visible: true,
+        },
+        {
+          id: 'notices',
+          label: 'الإنذارات وقرارات الفصل',
+          icon: ShieldAlert,
+          badge: noticesCount > 0 ? noticesCount : null,
+          badgeColor: 'bg-red-600 text-white',
+          visible: true,
         },
         {
           id: 'ai_prediction',
-          label: 'التنبؤ الذكي بالتسرب والرسوب',
+          label: 'التنبؤ الذكي بالتسرب (AI)',
           icon: BrainCircuit,
           badge: 'AI ✨',
-          badgeColor: 'bg-indigo-600 text-cyan-200 font-extrabold animate-pulse',
-          visible: canViewReports || canStudents,
+          badgeColor: 'bg-indigo-600 text-cyan-200',
+          visible: true,
         },
       ],
-    },
-    {
-      category: 'الورش والجدارات الفنية',
-      icon: Wrench,
+    });
+
+    list.push({
+      title: 'العمليات الميدانية والورش',
       items: [
+        {
+          id: 'departments',
+          label: 'الأقسام الصناعية والورش',
+          icon: Building2,
+          visible: true,
+        },
+        {
+          id: 'competencies',
+          label: 'منظومة الجدارات (CBE)',
+          icon: Award,
+          visible: true,
+        },
         {
           id: 'attendance',
           label: 'رصد الحضور والغياب',
           icon: Wrench,
-          badge: null,
-          visible: canAttendance,
+          visible: true,
         },
-        {
-          id: 'competencies',
-          label: 'تقييم الجدارات (85%)',
-          icon: Award,
-          badge: null,
-          visible: canCompetencies,
-        },
-        {
-          id: 'safety',
-          label: 'السلامة ومخالفات الورش',
-          icon: ShieldAlert,
-          badge: null,
-          visible: canSafety,
-        },
-        {
-          id: 'departments',
-          label: 'متابعة ورش التخصص',
-          icon: Building2,
-          badge: null,
-          visible: canDeptReports,
-        },
-      ],
-    },
-    {
-      category: 'شئون الطلاب والسجلات',
-      icon: Users,
-      items: [
         {
           id: 'affairs',
-          label: 'شئون الطلاب ونقل الفصول',
+          label: 'شئون الطلاب والقيد',
           icon: Users,
-          badge: null,
-          visible: canStudents,
+          visible: true,
         },
         {
-          id: 'class_rosters',
-          label: 'قوائم الفصول وكشوف A4',
-          icon: BookOpen,
-          badge: null,
-          visible: canStudents || canAttendance || canDeptReports,
-        },
-        {
-          id: 'student_report',
-          label: 'ملف وسجل الطالب الشامل',
-          icon: GraduationCap,
-          badge: null,
-          visible: canStudents || canAttendance || canDeptReports || canViewReports,
-        },
-        {
-          id: 'ministry_sheets',
-          label: 'السجلات الوزارية (1 سر / 41)',
-          icon: FileSpreadsheet,
-          badge: null,
-          visible: canStudents,
-        },
-        {
-          id: 'social_portal',
-          label: 'بوابة الأخصائي الاجتماعي والإرشاد',
-          icon: HeartHandshake,
-          badge: socialCasesCount > 0 ? `${socialCasesCount}` : null,
-          badgeColor: 'bg-teal-600 text-white font-bold',
-          visible: canSocialCases,
-        },
-        {
-          id: 'notices',
-          label: 'الإنذارات والقرارات الرسمية',
+          id: 'official_sheets',
+          label: 'دفاتر 41 وسر 1 الوزارية',
           icon: FileText,
-          badge: noticesCount > 0 ? `${noticesCount}` : null,
-          badgeColor: 'bg-red-500 text-white animate-pulse',
-          visible: canNotices,
-        },
-        {
-          id: 'parent_portal',
-          label: 'بوابة استعلام أولياء الأمور',
-          icon: ClipboardList,
-          badge: null,
           visible: true,
         },
       ],
-    },
-    {
-      category: 'الإدارة والتهيئة',
-      icon: Sliders,
+    });
+
+    list.push({
+      title: 'الإدارة والنظام',
       items: [
         {
           id: 'settings',
-          label: 'بيانات المدرسة والتخصصات',
+          label: 'إعدادات المدرسة والقواعد',
           icon: Sliders,
-          badge: null,
-          visible: canSettings,
+          visible: true,
         },
         {
           id: 'users',
-          label: 'المستخدمين والصلاحيات',
-          icon: Key,
-          badge: null,
-          visible: canUsers,
-        },
-        {
-          id: 'admin_portal',
-          label: 'لوحة الأدمن المركزية',
-          icon: ShieldCheck,
-          badge: null,
-          visible: canSettings || canUsers,
-          href: '/admin',
+          label: 'حسابات فريق العمل',
+          icon: UserCheck,
+          visible: true,
         },
       ],
-    },
-  ];
-
-  // Collapsible Accordion State for Categories
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('egyptian_school_sidebar_sections_state');
-        if (saved) return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return {};
-  });
-
-  const toggleCategory = (categoryName: string) => {
-    setCollapsedCategories((prev) => {
-      const next = { ...prev, [categoryName]: !prev[categoryName] };
-      try {
-        localStorage.setItem('egyptian_school_sidebar_sections_state', JSON.stringify(next));
-      } catch (e) {
-        console.error(e);
-      }
-      return next;
     });
-  };
 
-  const expandAll = () => {
-    const next: Record<string, boolean> = {};
-    navSections.forEach((s) => (next[s.category] = false));
-    setCollapsedCategories(next);
-    try {
-      localStorage.setItem('egyptian_school_sidebar_sections_state', JSON.stringify(next));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const collapseAll = () => {
-    const next: Record<string, boolean> = {};
-    navSections.forEach((s) => {
-      // Keep section with active tab open
-      const hasActive = s.items.some((item) => item.id === activeTab);
-      next[s.category] = !hasActive;
-    });
-    setCollapsedCategories(next);
-    try {
-      localStorage.setItem('egyptian_school_sidebar_sections_state', JSON.stringify(next));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Auto-expand the category that contains the currently active tab
-  useEffect(() => {
-    navSections.forEach((section) => {
-      const hasActive = section.items.some((item) => item.id === activeTab);
-      if (hasActive && collapsedCategories[section.category]) {
-        setCollapsedCategories((prev) => ({
-          ...prev,
-          [section.category]: false,
-        }));
-      }
-    });
-  }, [activeTab]);
+    return list;
+  }, [role, noticesCount, socialCasesCount]);
 
   return (
     <>
@@ -319,305 +365,142 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isOpenMobile && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs"
+          className="fixed inset-0 bg-slate-950/60 z-40 lg:hidden backdrop-blur-xs transition-opacity"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed lg:relative top-0 right-0 z-40 lg:z-10 h-screen lg:h-full bg-slate-900 text-slate-100 flex flex-col justify-between border-l border-slate-800 shadow-2xl lg:shadow-none transition-all duration-300 ease-in-out shrink-0 no-print ${
-          isOpenMobile
-            ? 'translate-x-0 w-72'
-            : isCollapsed
-            ? 'translate-x-full lg:translate-x-0 lg:w-20'
-            : 'translate-x-full lg:translate-x-0 lg:w-72'
-        }`}
+        className={`fixed lg:static top-0 bottom-0 right-0 z-40 flex flex-col bg-white dark:bg-slate-900 border-s border-slate-200/80 dark:border-slate-800 transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'w-20' : 'w-64'
+        } ${isOpenMobile ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:translate-x-0'}`}
       >
-        {/* Top Header Bar inside Sidebar */}
-        <div className="p-3 border-b border-slate-800 flex items-center justify-between gap-2">
-          {!isCollapsed ? (
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 font-bold text-xs shadow-inner">
-                <Building2 className="w-4 h-4" />
-              </div>
-              <span className="font-black text-xs text-white truncate text-right">
-                {schoolConfig.name}
+        {/* Quick Search Shortcut Trigger */}
+        {!isCollapsed && onOpenCommandPalette && (
+          <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+            <button
+              onClick={onOpenCommandPalette}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 transition cursor-pointer group"
+            >
+              <span className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200">
+                <Search className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+                <span>بحث سريع بالأوامر</span>
               </span>
-            </div>
-          ) : (
-            <div className="mx-auto text-amber-400">
-              <Building2 className="w-5 h-5" />
-            </div>
-          )}
-
-          {/* Desktop Collapse / Expand Toggle Button */}
-          <button
-            onClick={onToggleCollapse}
-            className="hidden lg:flex p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer shrink-0"
-            title={isCollapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية'}
-          >
-            {isCollapsed ? (
-              <PanelRightOpen className="w-4 h-4 text-amber-400" />
-            ) : (
-              <PanelRightClose className="w-4 h-4" />
-            )}
-          </button>
-
-          {/* Mobile Close Button */}
-          <button
-            onClick={onCloseMobile}
-            className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Global Accordion Quick Controls (Expand / Collapse All) */}
-        {!isCollapsed && (
-          <div className="px-3 pt-2 pb-1 flex items-center justify-between text-[10.5px] font-bold text-slate-400 border-b border-slate-800/50">
-            <span className="text-slate-400 flex items-center gap-1">
-              <ChevronsUpDown className="w-3.5 h-3.5 text-amber-400" />
-              <span>مجموعات النظام</span>
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={expandAll}
-                className="hover:text-amber-300 transition cursor-pointer"
-                title="فتح جميع المجموعات"
-              >
-                فتح الكل
-              </button>
-              <span>•</span>
-              <button
-                type="button"
-                onClick={collapseAll}
-                className="hover:text-amber-300 transition cursor-pointer"
-                title="طي جميع المجموعات"
-              >
-                طي الكل
-              </button>
-            </div>
+              <kbd className="font-mono text-[10px] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-1.5 py-0.5 rounded shadow-2xs">
+                Ctrl K
+              </kbd>
+            </button>
           </div>
         )}
 
-        {/* Navigation Links Scrollable Area */}
-        <div className="p-2 space-y-2.5 overflow-y-auto flex-1 custom-scrollbar">
-          {navSections.map((section, idx) => {
-            const visibleItems = section.items.filter((item) => item.visible);
-            if (visibleItems.length === 0) return null;
+        {/* Navigation Sections */}
+        <div className="flex-1 overflow-y-auto py-3 px-2.5 space-y-4">
+          {sections.map((sec, secIdx) => (
+            <div key={secIdx} className="space-y-1">
+              {!isCollapsed && (
+                <div className="px-3 text-[10.5px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                  {sec.title}
+                </div>
+              )}
 
-            const isSectionCollapsed = Boolean(collapsedCategories[section.category]);
-            const SectionIcon = section.icon || LayoutDashboard;
-            const hasActiveChild = section.items.some((item) => item.id === activeTab);
+              {sec.items
+                .filter((item) => item.visible)
+                .map((item) => {
+                  const isActive = activeTab === item.id;
+                  const Icon = item.icon;
 
-            return (
-              <div
-                key={idx}
-                className={`rounded-2xl transition-all ${
-                  !isCollapsed ? 'bg-slate-950/40 border border-slate-800/60 p-1' : 'space-y-1'
-                }`}
-              >
-                {/* Collapsible Category Header Button */}
-                {!isCollapsed && (
-                  <button
-                    type="button"
-                    onClick={() => toggleCategory(section.category)}
-                    className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center justify-between transition group cursor-pointer ${
-                      hasActiveChild
-                        ? 'text-amber-300 bg-amber-500/10'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                    }`}
-                    title={isSectionCollapsed ? 'انقر لفتح المجموعة' : 'انقر لتقليص المجموعة'}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <SectionIcon
-                        className={`w-3.5 h-3.5 shrink-0 ${
-                          hasActiveChild ? 'text-amber-400' : 'text-slate-500 group-hover:text-slate-300'
-                        }`}
-                      />
-                      <span className="truncate text-right">{section.category}</span>
-                    </div>
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        onSelectTab(item.id);
+                        if (isOpenMobile) onCloseMobile();
+                      }}
+                      title={isCollapsed ? item.label : undefined}
+                      className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 cursor-pointer ${
+                        isActive
+                          ? 'bg-blue-600 text-white shadow-xs font-black'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white'
+                      } ${isCollapsed ? 'justify-center px-0' : ''}`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                        {!isCollapsed && <span className="truncate">{item.label}</span>}
+                      </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded-md font-mono font-bold">
-                        {visibleItems.length}
-                      </span>
-                      <ChevronDown
-                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                          isSectionCollapsed ? '-rotate-90 text-slate-500' : 'rotate-0 text-slate-400'
-                        }`}
-                      />
-                    </div>
-                  </button>
-                )}
-
-                {/* Sub-Items List */}
-                {(!isSectionCollapsed || isCollapsed) && (
-                  <div className="space-y-0.5 pt-0.5 animate-in fade-in duration-150">
-                    {visibleItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = activeTab === item.id;
-
-                      if (item.href) {
-                        return (
-                          <Link
-                            key={item.id}
-                            href={item.href}
-                            onClick={onCloseMobile}
-                            title={isCollapsed ? item.label : undefined}
-                            className={`w-full flex items-center ${
-                              isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2 gap-2'
-                            } rounded-xl text-xs font-bold transition-all group cursor-pointer relative ${
-                              isActive
-                                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md font-black ring-1 ring-amber-400'
-                                : 'text-amber-400/90 hover:bg-amber-500/10 hover:text-amber-300'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                              <Icon className="w-4 h-4 shrink-0 text-amber-400" />
-                              {!isCollapsed && (
-                                <span className="truncate text-right">{item.label}</span>
-                              )}
-                            </div>
-
-                            {!isCollapsed && item.badge && (
-                              <span
-                                className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 whitespace-nowrap ${
-                                  item.badgeColor || 'bg-amber-500 text-slate-950'
-                                }`}
-                              >
-                                {item.badge}
-                              </span>
-                            )}
-
-                            {isCollapsed && item.badge && (
-                              <span className="absolute top-2 left-2 w-2 h-2 bg-amber-400 rounded-full animate-ping"></span>
-                            )}
-                          </Link>
-                        );
-                      }
-
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            onSelectTab(item.id);
-                            onCloseMobile();
-                          }}
-                          title={isCollapsed ? item.label : undefined}
-                          className={`w-full flex items-center ${
-                            isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2 gap-2'
-                          } rounded-xl text-xs font-bold transition-all group cursor-pointer relative ${
-                            isActive
-                              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md font-black ring-1 ring-amber-400'
-                              : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      {!isCollapsed && item.badge && (
+                        <span
+                          className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-black shrink-0 ${
+                            item.badgeColor || (isActive ? 'bg-white text-blue-900' : 'bg-blue-100 text-blue-800')
                           }`}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <Icon
-                              className={`w-4 h-4 shrink-0 transition-colors ${
-                                isActive ? 'text-slate-950' : 'text-slate-400 group-hover:text-amber-400'
-                              }`}
-                            />
-                            {!isCollapsed && (
-                              <span className="truncate text-right">{item.label}</span>
-                            )}
-                          </div>
-
-                          {!isCollapsed && item.badge && (
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 whitespace-nowrap ${
-                                item.badgeColor || (isActive ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300')
-                              }`}
-                            >
-                              {item.badge}
-                            </span>
-                          )}
-
-                          {/* Collapsed Dot Indicator */}
-                          {isCollapsed && item.badge && (
-                            <span className="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+            </div>
+          ))}
         </div>
 
-        {/* User Profile Card at Bottom of Sidebar */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/90 space-y-2 shrink-0">
+        {/* Footer: User Role Pill & Collapse Toggle */}
+        <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-2 bg-slate-50/50 dark:bg-slate-900/50">
           {!isCollapsed ? (
-            <>
-              <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 font-bold text-xs">
-                    <UserCheck className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 flex-1 text-right">
-                    <div className="font-bold text-xs text-slate-100 truncate">{currentUser.name}</div>
-                    <div className="text-[10px] text-amber-400 font-semibold truncate">{currentUser.roleTitle}</div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={onOpenRoleSwitcher}
-                  className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-2.5 py-1 rounded-lg font-bold border border-slate-700 shrink-0 transition cursor-pointer shadow-2xs"
-                  title="تبديل المستخدم"
-                >
-                  تبديل
-                </button>
+            <div className="flex items-center justify-between gap-2 p-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs">
+              <div className="min-w-0">
+                <span className="font-black text-slate-900 dark:text-white text-xs truncate block">
+                  {currentUser.name}
+                </span>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold truncate block">
+                  {currentUser.roleTitle}
+                </span>
               </div>
 
-              {onSwitchPortal && (
+              <div className="flex items-center gap-1 shrink-0">
                 <button
-                  onClick={onSwitchPortal}
-                  className="w-full flex items-center justify-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 py-2 rounded-xl text-xs font-black transition cursor-pointer"
+                  onClick={onOpenRoleSwitcher}
+                  title="تبديل الدور"
+                  className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl cursor-pointer"
                 >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  تبديل البوابة الرئيسية
+                  <UserCheck className="w-3.5 h-3.5" />
                 </button>
-              )}
-
-              <button
-                onClick={onLogout}
-                className="w-full flex items-center justify-center gap-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-red-100 border border-red-900/60 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                تسجيل الخروج
-              </button>
-            </>
+                <button
+                  onClick={onLogout}
+                  title="تسجيل الخروج"
+                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
-              {onSwitchPortal && (
-                <button
-                  onClick={onSwitchPortal}
-                  className="w-10 h-10 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 flex items-center justify-center text-amber-300 border border-amber-500/40 transition"
-                  title="تبديل البوابة"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-              )}
               <button
                 onClick={onOpenRoleSwitcher}
-                className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-amber-400 transition"
-                title={`${currentUser.name} (${currentUser.roleTitle}) - انقر للتبديل`}
+                title="تبديل الدور"
+                className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer"
               >
                 <UserCheck className="w-4 h-4" />
               </button>
               <button
                 onClick={onLogout}
-                className="w-10 h-10 rounded-xl bg-red-950/60 hover:bg-red-900 flex items-center justify-center text-red-400 transition"
                 title="تسجيل الخروج"
+                className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
           )}
+
+          {/* Collapse Sidebar Button on Desktop */}
+          <button
+            onClick={onToggleCollapse}
+            className="hidden lg:flex w-full items-center justify-center gap-2 py-1.5 text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+          >
+            {isCollapsed ? <PanelRightOpen className="w-4 h-4" /> : <PanelRightClose className="w-4 h-4" />}
+            {!isCollapsed && <span>طي القائمة</span>}
+          </button>
         </div>
       </aside>
     </>

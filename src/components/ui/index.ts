@@ -10,3 +10,4 @@ export * from './EmptyState';
 export * from './ConfirmDialog';
 export * from './Tabs';
 export * from './DataTable';
+export * from './PageHeader';
