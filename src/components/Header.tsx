@@ -56,6 +56,7 @@ interface HeaderProps {
   departments?: Department[];
   onSelectStudentReport?: (studentId: string) => void;
   onSelectStudentAttendance?: (classId: string) => void;
+  onOpenCommandPalette?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -76,6 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
   departments = [],
   onSelectStudentReport,
   onSelectStudentAttendance,
+  onOpenCommandPalette,
 }) => {
   const [alerts, setAlerts] = useState<EarlyWarningAlert[]>([]);
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -120,8 +122,12 @@ export const Header: React.FC<HeaderProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsQuickSearchOpen(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
+        if (onOpenCommandPalette) {
+          onOpenCommandPalette();
+        } else {
+          setIsQuickSearchOpen(true);
+          setTimeout(() => searchInputRef.current?.focus(), 50);
+        }
       }
       if (e.key === 'Escape') {
         setIsQuickSearchOpen(false);
@@ -129,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [onOpenCommandPalette]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -299,25 +305,40 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
               <Search className="w-4 h-4 text-amber-400" />
             </div>
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={quickSearchQuery}
-              onChange={(e) => {
-                setQuickSearchQuery(e.target.value);
-                setIsQuickSearchOpen(true);
-              }}
-              onFocus={() => setIsQuickSearchOpen(true)}
-              placeholder="بحث سريع عن طالب بالاسم أو الكود... (Ctrl+K)"
-              className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pr-9 pl-10 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500/50 focus:border-amber-400 transition"
-            />
-            {quickSearchQuery && (
+            {onOpenCommandPalette ? (
               <button
-                onClick={() => setQuickSearchQuery('')}
-                className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 hover:text-white"
+                type="button"
+                onClick={onOpenCommandPalette}
+                className="w-full bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 rounded-xl pr-9 pl-3 py-1.5 text-xs text-slate-400 hover:text-white flex items-center justify-between transition cursor-pointer group"
               >
-                <X className="w-3.5 h-3.5" />
+                <span className="truncate">بحث سريع عن طالب، أمر، أو قسم...</span>
+                <kbd className="font-mono text-[10px] bg-slate-800 text-amber-300 border border-slate-700 px-1.5 py-0.5 rounded shrink-0">
+                  Ctrl K
+                </kbd>
               </button>
+            ) : (
+              <>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={quickSearchQuery}
+                  onChange={(e) => {
+                    setQuickSearchQuery(e.target.value);
+                    setIsQuickSearchOpen(true);
+                  }}
+                  onFocus={() => setIsQuickSearchOpen(true)}
+                  placeholder="بحث سريع عن طالب بالاسم أو الكود... (Ctrl+K)"
+                  className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pr-9 pl-10 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500/50 focus:border-amber-400 transition"
+                />
+                {quickSearchQuery && (
+                  <button
+                    onClick={() => setQuickSearchQuery('')}
+                    className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </>
             )}
           </div>
 
