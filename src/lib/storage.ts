@@ -52,7 +52,7 @@ import { db } from './db';
 import { runLocalStorageToIndexedDbMigration, hashNationalId, generateParentAccessCode, MIGRATION_KEY } from './migration';
 import { logAuditEvent, getAuditLogs } from './auditLogger';
 import { OFFICIAL_TERMS } from './terms';
-import { autoSyncKeyToCloud, deleteRowFromCloud } from './supabaseSync';
+import { autoSyncKeyToCloud, deleteRowFromCloud, wipeCloudDatabase } from './supabaseSync';
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'egyptian_school_current_user',
@@ -2621,6 +2621,13 @@ export const wipeDatabaseForProduction = async (): Promise<void> => {
   // Lock production mode & prevent migration from re-inserting demo mock students
   localStorage.setItem(MIGRATION_KEY, 'true');
   localStorage.setItem('egyptian_school_production_mode', 'true');
+
+  // 4. Wipe cloud database in Supabase (if connected) so cloud does not restore old data
+  try {
+    await wipeCloudDatabase();
+  } catch (err) {
+    console.error('Failed to wipe cloud database:', err);
+  }
 
   window.dispatchEvent(new Event('egyptian_school_storage_update'));
   window.location.reload();

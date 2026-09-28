@@ -62,4 +62,10 @@ describe('Factory Reset & Production Database Wipe', () => {
     const users = getUsers();
     expect(users.length).toBeGreaterThan(0);
   });
+
+  it('safely handles wipeCloudDatabase', async () => {
+    const { wipeCloudDatabase } = await import('../src/lib/supabaseSync');
+    const result = await wipeCloudDatabase();
+    expect(result.success).toBe(true);
+  });
 });

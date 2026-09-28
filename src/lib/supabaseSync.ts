@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { db } from './db';
 import {
   getSchoolConfig,
   getUsers,
@@ -243,6 +244,36 @@ export const pushAllDataToCloud = async (): Promise<{ success: boolean; message:
 };
 
 /**
+ * Wipes all student, attendance, notices, violations, and assessment records from Supabase Cloud.
+ */
+export const wipeCloudDatabase = async (): Promise<{ success: boolean; message: string }> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true, message: 'مفاتيح Supabase غير مفعلة.' };
+  }
+
+  try {
+    notifySyncStatus('syncing', 'جارٍ تفريغ وتصفير قاعدة البيانات السحابية...');
+
+    // Delete all operational rows from Supabase
+    await Promise.allSettled([
+      supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('attendance_records').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('official_notices').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('workshop_violations').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('competency_assessments').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('social_cases').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    ]);
+
+    notifySyncStatus('synced', 'تم تفريغ السحابة وتصفيرها بالكامل للإنتاج 🟢');
+    return { success: true, message: 'تم تصفير قاعدة البيانات السحابية بنجاح' };
+  } catch (error: any) {
+    console.error('Error wiping cloud database:', error);
+    notifySyncStatus('error', 'تعذر تفريغ قاعدة البيانات السحابية');
+    return { success: false, message: error.message || 'حدث خطأ أثناء تصفير السحابة' };
+  }
+};
+
+/**
  * Pulls latest data from Supabase and syncs local storage.
  */
 export const pullAllDataFromCloud = async (isBackground = false): Promise<{ success: boolean; message: string }> => {
@@ -287,30 +318,58 @@ export const pullAllDataFromCloud = async (isBackground = false): Promise<{ succ
 
     // 5. Students
     const { data: studentRows } = await supabase.from('students').select('data');
-    if (studentRows && studentRows.length > 0) {
-      hasAnyCloudData = true;
-      localStorage.setItem('egyptian_school_students', JSON.stringify(studentRows.map((r) => r.data)));
+    if (studentRows) {
+      const parsedStudents = studentRows.map((r) => r.data).filter(Boolean);
+      localStorage.setItem('egyptian_school_students', JSON.stringify(parsedStudents));
+      if (studentRows.length > 0) hasAnyCloudData = true;
+      try {
+        await db.students.clear();
+        if (parsedStudents.length > 0) {
+          await db.students.bulkPut(parsedStudents);
+        }
+      } catch {}
     }
 
     // 6. Attendance
     const { data: attRows } = await supabase.from('attendance_records').select('data');
-    if (attRows && attRows.length > 0) {
-      hasAnyCloudData = true;
-      localStorage.setItem('egyptian_school_attendance', JSON.stringify(attRows.map((r) => r.data)));
+    if (attRows) {
+      const parsedAtt = attRows.map((r) => r.data).filter(Boolean);
+      localStorage.setItem('egyptian_school_attendance', JSON.stringify(parsedAtt));
+      if (attRows.length > 0) hasAnyCloudData = true;
+      try {
+        await db.attendance.clear();
+        if (parsedAtt.length > 0) {
+          await db.attendance.bulkPut(parsedAtt);
+        }
+      } catch {}
     }
 
     // 7. Notices
     const { data: notRows } = await supabase.from('official_notices').select('data');
-    if (notRows && notRows.length > 0) {
-      hasAnyCloudData = true;
-      localStorage.setItem('egyptian_school_notices', JSON.stringify(notRows.map((r) => r.data)));
+    if (notRows) {
+      const parsedNotices = notRows.map((r) => r.data).filter(Boolean);
+      localStorage.setItem('egyptian_school_notices', JSON.stringify(parsedNotices));
+      if (notRows.length > 0) hasAnyCloudData = true;
+      try {
+        await db.notices.clear();
+        if (parsedNotices.length > 0) {
+          await db.notices.bulkPut(parsedNotices);
+        }
+      } catch {}
     }
 
     // 8. Violations
     const { data: vioRows } = await supabase.from('workshop_violations').select('data');
-    if (vioRows && vioRows.length > 0) {
-      hasAnyCloudData = true;
-      localStorage.setItem('egyptian_school_workshop_violations', JSON.stringify(vioRows.map((r) => r.data)));
+    if (vioRows) {
+      const parsedVio = vioRows.map((r) => r.data).filter(Boolean);
+      localStorage.setItem('egyptian_school_workshop_violations', JSON.stringify(parsedVio));
+      if (vioRows.length > 0) hasAnyCloudData = true;
+      try {
+        await db.workshop_violations.clear();
+        if (parsedVio.length > 0) {
+          await db.workshop_violations.bulkPut(parsedVio);
+        }
+      } catch {}
     }
 
     // 9. Competency Units
@@ -322,20 +381,35 @@ export const pullAllDataFromCloud = async (isBackground = false): Promise<{ succ
 
     // 10. Competency Assessments
     const { data: assRows } = await supabase.from('competency_assessments').select('data');
-    if (assRows && assRows.length > 0) {
-      hasAnyCloudData = true;
-      localStorage.setItem('egyptian_school_competency_assessments', JSON.stringify(assRows.map((r) => r.data)));
+    if (assRows) {
+      const parsedAss = assRows.map((r) => r.data).filter(Boolean);
+      localStorage.setItem('egyptian_school_competency_assessments', JSON.stringify(parsedAss));
+      if (assRows.length > 0) hasAnyCloudData = true;
+      try {
+        await db.competency_assessments.clear();
+        if (parsedAss.length > 0) {
+          await db.competency_assessments.bulkPut(parsedAss);
+        }
+      } catch {}
     }
 
     // 11. Social Cases
     const { data: socRows } = await supabase.from('social_cases').select('data');
-    if (socRows && socRows.length > 0) {
-      hasAnyCloudData = true;
-      localStorage.setItem('egyptian_school_social_cases', JSON.stringify(socRows.map((r) => r.data)));
+    if (socRows) {
+      const parsedSoc = socRows.map((r) => r.data).filter(Boolean);
+      localStorage.setItem('egyptian_school_social_cases', JSON.stringify(parsedSoc));
+      if (socRows.length > 0) hasAnyCloudData = true;
+      try {
+        await db.social_cases.clear();
+        if (parsedSoc.length > 0) {
+          await db.social_cases.bulkPut(parsedSoc);
+        }
+      } catch {}
     }
 
-    // If cloud is totally blank on first run, push local defaults so cloud is immediately ready
-    if (!hasAnyCloudData) {
+    // If cloud is totally blank on first run and local has non-empty state, push local defaults
+    const isProduction = localStorage.getItem('egyptian_school_production_mode') === 'true';
+    if (!hasAnyCloudData && !isProduction) {
       console.log('Cloud database is empty, initializing with local defaults...');
       await pushAllDataToCloud();
     } else {
@@ -370,157 +444,197 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
         break;
 
       case 'egyptian_school_users':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('school_users').upsert(
-            data.map((u: any) => ({
-              id: u.id,
-              username: u.username,
-              name: u.name,
-              role: u.role,
-              role_title: u.roleTitle,
-              phone: u.phone || '',
-              department_id: u.departmentId || null,
-              data: u,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('school_users').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('school_users').upsert(
+              data.map((u: any) => ({
+                id: u.id,
+                username: u.username,
+                name: u.name,
+                role: u.role,
+                role_title: u.roleTitle,
+                phone: u.phone || '',
+                department_id: u.departmentId || null,
+                data: u,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_departments':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('departments').upsert(
-            data.map((d: any) => ({
-              id: d.id,
-              name: d.name,
-              code: d.code,
-              data: d,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('departments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('departments').upsert(
+              data.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                code: d.code,
+                data: d,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_classes':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('classes').upsert(
-            data.map((c: any) => ({
-              id: c.id,
-              name: c.name,
-              grade_level: c.gradeLevel,
-              department_id: c.departmentId,
-              data: c,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('classes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('classes').upsert(
+              data.map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                grade_level: c.gradeLevel,
+                department_id: c.departmentId,
+                data: c,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_students':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('students').upsert(
-            data.map((s: any) => ({
-              id: s.id,
-              student_code: s.studentCode,
-              national_id: s.nationalId,
-              full_name: s.fullName,
-              class_id: s.classId,
-              department_id: s.departmentId,
-              data: s,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('students').upsert(
+              data.map((s: any) => ({
+                id: s.id,
+                student_code: s.studentCode,
+                national_id: s.nationalId,
+                full_name: s.fullName,
+                class_id: s.classId,
+                department_id: s.departmentId,
+                data: s,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_attendance':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('attendance_records').upsert(
-            data.map((a: any) => ({
-              id: a.id,
-              student_id: a.studentId,
-              date: a.date,
-              class_id: a.classId,
-              status: a.status,
-              data: a,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('attendance_records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('attendance_records').upsert(
+              data.map((a: any) => ({
+                id: a.id,
+                student_id: a.studentId,
+                date: a.date,
+                class_id: a.classId,
+                status: a.status,
+                data: a,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_notices':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('official_notices').upsert(
-            data.map((n: any) => ({
-              id: n.id,
-              student_id: n.studentId,
-              notice_type: n.noticeType,
-              data: n,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('official_notices').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('official_notices').upsert(
+              data.map((n: any) => ({
+                id: n.id,
+                student_id: n.studentId,
+                notice_type: n.noticeType,
+                data: n,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_workshop_violations':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('workshop_violations').upsert(
-            data.map((v: any) => ({
-              id: v.id,
-              student_id: v.studentId,
-              violation_type: v.violationType,
-              data: v,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('workshop_violations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('workshop_violations').upsert(
+              data.map((v: any) => ({
+                id: v.id,
+                student_id: v.studentId,
+                violation_type: v.violationType,
+                data: v,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_competency_units':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('competency_units').upsert(
-            data.map((u: any) => ({
-              id: u.id,
-              code: u.code,
-              name: u.name,
-              department_id: u.departmentId,
-              grade_level: u.gradeLevel,
-              data: u,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('competency_units').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('competency_units').upsert(
+              data.map((u: any) => ({
+                id: u.id,
+                code: u.code,
+                name: u.name,
+                department_id: u.departmentId,
+                grade_level: u.gradeLevel,
+                data: u,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_competency_assessments':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('competency_assessments').upsert(
-            data.map((a: any) => ({
-              id: a.id,
-              student_id: a.studentId,
-              unit_id: a.unitId,
-              outcome_id: a.outcomeId,
-              data: a,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('competency_assessments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('competency_assessments').upsert(
+              data.map((a: any) => ({
+                id: a.id,
+                student_id: a.studentId,
+                unit_id: a.unitId,
+                outcome_id: a.outcomeId,
+                data: a,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
 
       case 'egyptian_school_social_cases':
-        if (Array.isArray(data) && data.length > 0) {
-          await supabase.from('social_cases').upsert(
-            data.map((s: any) => ({
-              id: s.id,
-              student_id: s.studentId,
-              status: s.status,
-              priority: s.priority,
-              category: s.category,
-              data: s,
-              updated_at: new Date().toISOString(),
-            }))
-          );
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            await supabase.from('social_cases').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            await supabase.from('social_cases').upsert(
+              data.map((s: any) => ({
+                id: s.id,
+                student_id: s.studentId,
+                status: s.status,
+                priority: s.priority,
+                category: s.category,
+                data: s,
+                updated_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
         break;
     }
