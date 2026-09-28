@@ -37,6 +37,8 @@ import {
   GraduationCap,
   Sparkles,
   BookOpen,
+  KeyRound,
+  Lock,
 } from 'lucide-react';
 
 interface StudentReportCardViewProps {
@@ -440,6 +442,42 @@ export const StudentReportCardView: React.FC<StudentReportCardViewProps> = ({
             <div className="col-span-2 sm:col-span-3">
               <span className="text-slate-500 block text-[10.5px]">العنوان ومحل الإقامة:</span>
               <span className="font-bold text-slate-950">{currentStudent.address || schoolConfig.address}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 1.5 Official 2FA Parent Portal Access Slip (Printable) */}
+        <div className="bg-indigo-50/70 border-2 border-indigo-900 rounded-2xl p-3.5 space-y-2">
+          <div className="flex items-center justify-between border-b border-indigo-200 pb-2">
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-indigo-900" />
+              <h4 className="font-black text-indigo-950 text-xs sm:text-sm">
+                بيانات الدخول الثنائي (2FA) المعتمدة لبوابة ولي الأمر والطالب الإلكترونية
+              </h4>
+            </div>
+            <span className="text-[10px] font-bold bg-indigo-200/70 text-indigo-900 px-2 py-0.5 rounded-md border border-indigo-300">
+              وثيقة سرية لولي الأمر
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="bg-white p-2.5 rounded-xl border border-indigo-200">
+              <span className="text-slate-500 block text-[10px] font-bold">1. العامل الأول (الرقم القومي للطالب):</span>
+              <span className="font-mono font-black text-slate-950 text-sm tracking-wider">{currentStudent.nationalId}</span>
+            </div>
+
+            <div className="bg-white p-2.5 rounded-xl border border-indigo-200">
+              <span className="text-slate-500 block text-[10px] font-bold">2. العامل الثاني (كود الدخول السري 2FA):</span>
+              <span className="font-mono font-black text-indigo-700 text-sm tracking-widest uppercase">
+                {currentStudent.parentAccessCode || 'DEMO12'}
+              </span>
+            </div>
+
+            <div className="bg-white p-2.5 rounded-xl border border-indigo-200 flex flex-col justify-center">
+              <span className="text-slate-500 block text-[10px] font-bold">طريقة الاستعلام:</span>
+              <span className="text-[10.5px] font-bold text-slate-800">
+                الدخول عبر بوابة المدرسة <strong className="text-indigo-900">&larr;</strong> اختيار (بوابة ولي الأمر) <strong className="text-indigo-900">&larr;</strong> إدخال العاملين أعلاه
+              </span>
             </div>
           </div>
         </div>

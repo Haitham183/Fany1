@@ -21,6 +21,7 @@ import {
   autoFixSwappedStudentFields,
   checkStudentDuplicate,
 } from '@/lib/storage';
+import { generateParentAccessCode } from '@/lib/migration';
 import { computeWeekDays } from '@/components/TeacherAttendanceTaker';
 import {
   Users,
@@ -48,6 +49,9 @@ import {
   Upload,
   ChevronRight,
   ChevronLeft,
+  KeyRound,
+  Copy,
+  RefreshCw,
   Wrench,
   Sparkles,
   LayoutGrid,
@@ -91,12 +95,14 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
   const [studentFormName, setStudentFormName] = useState('');
   const [studentFormNationalId, setStudentFormNationalId] = useState('');
   const [studentFormCode, setStudentFormCode] = useState('');
+  const [studentFormParentCode, setStudentFormParentCode] = useState('');
   const [studentFormClassId, setStudentFormClassId] = useState(classes[0]?.id || '');
   const [studentFormGuardian, setStudentFormGuardian] = useState('');
   const [studentFormPhone, setStudentFormPhone] = useState('');
   const [studentFormAddress, setStudentFormAddress] = useState('');
   const [studentFormStatus, setStudentFormStatus] = useState<any>('منتظم');
   const [studentFormError, setStudentFormError] = useState<string | null>(null);
+  const [copiedCodeStudentId, setCopiedCodeStudentId] = useState<string | null>(null);
 
   // Transfer Student Modal State
   const [isTransferModalOpen, setIsTransferModalOpen] = useState<boolean>(false);
@@ -185,6 +191,7 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
     setStudentFormName('');
     setStudentFormNationalId('');
     setStudentFormCode(String(Date.now()).slice(-8));
+    setStudentFormParentCode(generateParentAccessCode());
     setStudentFormClassId(classes[0]?.id || '');
     setStudentFormGuardian('');
     setStudentFormPhone('');
@@ -199,6 +206,7 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
     setStudentFormName(student.fullName);
     setStudentFormNationalId(student.nationalId);
     setStudentFormCode(student.studentCode);
+    setStudentFormParentCode(student.parentAccessCode || generateParentAccessCode());
     setStudentFormClassId(student.classId);
     setStudentFormGuardian(student.guardianName);
     setStudentFormPhone(student.guardianPhone);
@@ -206,6 +214,13 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
     setStudentFormStatus(student.status);
     setStudentFormError(null);
     setIsStudentModalOpen(true);
+  };
+
+  const handleCopySecretCode = (studentId: string, code?: string) => {
+    if (!code) return;
+    navigator.clipboard.writeText(code);
+    setCopiedCodeStudentId(studentId);
+    setTimeout(() => setCopiedCodeStudentId(null), 2500);
   };
 
   const handleSaveStudentSubmit = (e: React.FormEvent) => {
@@ -223,6 +238,7 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
     }
 
     const targetClass = classes.find((c) => c.id === studentFormClassId);
+    const resolvedParentCode = (studentFormParentCode.trim().toUpperCase() || generateParentAccessCode());
 
     try {
       if (editingStudent) {
@@ -231,6 +247,7 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
           fullName: studentFormName.trim(),
           nationalId: studentFormNationalId.trim(),
           studentCode: studentFormCode.trim(),
+          parentAccessCode: resolvedParentCode,
           classId: studentFormClassId,
           departmentId: targetClass?.departmentId || editingStudent.departmentId,
           gradeLevel: targetClass?.gradeLevel || editingStudent.gradeLevel,
@@ -244,6 +261,7 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
           fullName: studentFormName.trim(),
           nationalId: studentFormNationalId.trim(),
           studentCode: studentFormCode.trim() || String(Date.now()).slice(-8),
+          parentAccessCode: resolvedParentCode,
           classId: studentFormClassId,
           departmentId: targetClass?.departmentId || departments[0]?.id || '',
           gradeLevel: targetClass?.gradeLevel || 1,
@@ -721,19 +739,38 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
                             <span>|</span>
                             <span>ق: {student.nationalId}</span>
                           </div>
+                          {/* 2FA Secret Access Code Badge */}
+                          <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200/80 rounded-md px-1.5 py-0.5 mt-1 text-[10px]">
+                            <div className="flex items-center gap-1 font-mono font-bold text-indigo-950">
+                              <KeyRound className="w-3 h-3 text-indigo-600" />
+                              <span>كود 2FA:</span>
+                              <span className="bg-white px-1 rounded border border-indigo-300 text-indigo-700 font-black">
+                                {student.parentAccessCode || 'DEMO12'}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopySecretCode(student.id, student.parentAccessCode || 'DEMO12')}
+                              className="text-[9.5px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-0.5 px-1 rounded hover:bg-indigo-100 transition cursor-pointer"
+                              title="نسخ كود الدخول السري لولي الأمر"
+                            >
+                              <Copy className="w-2.5 h-2.5" />
+                              <span>{copiedCodeStudentId === student.id ? 'تم النسخ!' : 'نسخ'}</span>
+                            </button>
+                          </div>
                         </div>
 
                         <div className="flex items-center shrink-0">
                           <button
                             onClick={() => handleOpenEditStudent(student)}
-                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-md transition"
-                            title="تعديل بيانات الطالب"
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-md transition cursor-pointer"
+                            title="تعديل بيانات الطالب وتحديث الكود السري"
                           >
                             <Edit2 className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => handleDeleteStudent(student.id, student.fullName)}
-                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition"
+                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition cursor-pointer"
                             title="حذف الطالب"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -827,6 +864,7 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
                       <th className="p-2.5">اسم الطالب</th>
                       <th className="p-2.5">كود الطالب</th>
                       <th className="p-2.5">الرقم القومي</th>
+                      <th className="p-2.5 text-center">كود 2FA لولي الأمر</th>
                       <th className="p-2.5">الفصل</th>
                       <th className="p-2.5">القسم</th>
                       <th className="p-2.5">ولي الأمر</th>
@@ -846,6 +884,19 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
                           <td className="p-2 font-bold text-slate-900">{student.fullName}</td>
                           <td className="p-2 font-mono text-slate-600 text-[11px]">{student.studentCode}</td>
                           <td className="p-2 font-mono text-slate-600 text-[11px]">{student.nationalId}</td>
+                          <td className="p-2 text-center">
+                            <div className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200/90 px-2 py-0.5 rounded-md text-[11px] font-mono font-bold text-indigo-900">
+                              <span>{student.parentAccessCode || 'DEMO12'}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopySecretCode(student.id, student.parentAccessCode || 'DEMO12')}
+                                className="text-indigo-600 hover:text-indigo-950 transition cursor-pointer p-0.5"
+                                title="نسخ كود الدخول السري"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </td>
                           <td className="p-2 font-semibold text-slate-800">{studentClass?.name || '—'}</td>
                           <td className="p-2 text-slate-700">{studentDept?.name || 'عام'}</td>
                           <td className="p-2 text-slate-600">{student.guardianName || '—'}</td>
@@ -1212,6 +1263,48 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* 2FA Secret Access Code */}
+              <div className="bg-indigo-50/80 border border-indigo-200 rounded-xl p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-indigo-950 flex items-center gap-1.5 text-xs">
+                    <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>كود الدخول السري لولي الأمر (2FA Access Code) *</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setStudentFormParentCode(generateParentAccessCode())}
+                    className="text-[10px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 bg-white hover:bg-indigo-100 border border-indigo-300 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                    title="توليد كود سري عشوائي جديد للطالب"
+                  >
+                    <RefreshCw className="w-2.5 h-2.5" />
+                    <span>توليد كود جديد</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    required
+                    maxLength={10}
+                    placeholder="مثال: W8R4XY أو DEMO12"
+                    value={studentFormParentCode}
+                    onChange={(e) => setStudentFormParentCode(e.target.value.toUpperCase())}
+                    className="flex-1 bg-white border border-indigo-300 focus:border-indigo-600 rounded-xl px-3 py-2 text-indigo-950 font-mono font-black text-sm tracking-wider uppercase focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleCopySecretCode('form', studentFormParentCode)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl font-bold flex items-center gap-1 text-xs transition cursor-pointer shrink-0"
+                    title="نسخ الكود"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{copiedCodeStudentId === 'form' ? 'تم النسخ!' : 'نسخ'}</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-indigo-800 leading-relaxed">
+                  يُسلم هذا الكود لولي الأمر مع الرقم القومي للدخول الآمن عبر بوابة ولي الأمر والطالب.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
