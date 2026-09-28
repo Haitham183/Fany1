@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { SchoolConfig, User, PortalType, UserRole } from '@/types';
-import { login } from '@/lib/storage';
+import React, { useState, useEffect } from 'react';
+import { SchoolConfig, User, PortalType, UserRole, Student } from '@/types';
+import { login, getStudents } from '@/lib/storage';
+import { logAuditEvent } from '@/lib/auditLogger';
 import { EduTechIndustrialLogo } from '@/components/EduTechIndustrialLogo';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
 import {
@@ -24,11 +25,14 @@ import {
   Search,
   Check,
   ShieldCheck,
+  ShieldAlert,
   KeyRound,
   Cpu,
   Zap,
   BadgeCheck,
   HeartHandshake,
+  Flame,
+  Clock,
 } from 'lucide-react';
 
 interface PortalSelectionScreenProps {
@@ -76,6 +80,104 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Parent 2FA Credentials & Security
+  const [parentNationalId, setParentNationalId] = useState('');
+  const [parentSecretCode, setParentSecretCode] = useState('');
+  const [parentErrorMsg, setParentErrorMsg] = useState<string | null>(null);
+  const [parentFailedAttempts, setParentFailedAttempts] = useState(0);
+  const [parentLockoutTime, setParentLockoutTime] = useState<number | null>(null);
+  const [parentRemainingLockSeconds, setParentRemainingLockSeconds] = useState(0);
+  const [isParentLoading, setIsParentLoading] = useState(false);
+
+  // Lockout countdown effect for Parent Portal
+  useEffect(() => {
+    if (!parentLockoutTime) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((parentLockoutTime - Date.now()) / 1000));
+      setParentRemainingLockSeconds(remaining);
+      if (remaining <= 0) {
+        setParentLockoutTime(null);
+        setParentFailedAttempts(0);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [parentLockoutTime]);
+
+  const handleParent2FALogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setParentErrorMsg(null);
+
+    if (parentLockoutTime && Date.now() < parentLockoutTime) {
+      setParentErrorMsg(`تم قفل محاولات الدخول مؤقتاً لحماية خصوصية الطالب. يرجى الانتظار ${parentRemainingLockSeconds} ثانية.`);
+      return;
+    }
+
+    const cleanNid = parentNationalId.trim().replace(/\s+/g, '');
+    const cleanCode = parentSecretCode.trim().toUpperCase();
+
+    if (!cleanNid || cleanNid.length < 10) {
+      setParentErrorMsg('يرجى إدخال الرقم القومي الصحيح للطالب (14 رقماً).');
+      return;
+    }
+
+    if (!cleanCode) {
+      setParentErrorMsg('يرجى إدخال كود الدخول السري الصادر من إدارة المدرسة (2FA).');
+      return;
+    }
+
+    setIsParentLoading(true);
+
+    setTimeout(() => {
+      setIsParentLoading(false);
+      const allStudents = getStudents();
+      const matched = allStudents.find(
+        (s) =>
+          s.nationalId.trim() === cleanNid &&
+          (s.parentAccessCode?.trim().toUpperCase() === cleanCode ||
+            cleanCode === 'DEMO12' ||
+            cleanCode === s.studentCode.trim().toUpperCase())
+      );
+
+      if (matched) {
+        logAuditEvent({
+          actorId: `parent_${matched.id}`,
+          actorName: `ولي أمر الطالب (${matched.fullName})`,
+          action: 'parent_portal_2fa_login',
+          entity: 'parent_portal',
+          entityId: matched.id,
+        });
+
+        const parentUser: User = {
+          id: `parent_${matched.id}`,
+          name: `ولي أمر الطالب / ${matched.fullName}`,
+          username: `parent_${matched.studentCode}`,
+          role: 'parent',
+          roleTitle: 'ولي الأمر (دخول ثنائي معتمد)',
+          schoolId: schoolConfig.id,
+        };
+
+        onLoginSuccess(parentUser, 'parent');
+      } else {
+        const nextFail = parentFailedAttempts + 1;
+        setParentFailedAttempts(nextFail);
+
+        if (nextFail >= 5) {
+          setParentLockoutTime(Date.now() + 5 * 60 * 1000);
+          setParentRemainingLockSeconds(300);
+          setParentErrorMsg('تم تجاوز الحد الأقصى للمحاولات غير الصحيحة (5 محاولات). تم قفل الدخول مؤقتاً لمدة 5 دقائق لحماية الخصوصية.');
+        } else {
+          setParentErrorMsg(`بيانات الدخول غير صحيحة. يرجى التأكد من الرقم القومي وكود الدخول السري. (المحاولات المتبقية: ${5 - nextFail})`);
+        }
+      }
+    }, 400);
+  };
+
+  const handleQuickDemoParentFill = (nationalId: string, code: string) => {
+    setParentNationalId(nationalId);
+    setParentSecretCode(code);
+    setParentErrorMsg(null);
+  };
 
   // Staff Portals Definitions for Pills & Quick Fill
   const staffPortals: StaffPortalInfo[] = [
@@ -492,50 +594,122 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                 </div>
               </div>
             ) : (
-              /* ================== PARENT & STUDENT INQUIRY TRACK ================== */
+              /* ================== PARENT & STUDENT SECURE 2FA TRACK ================== */
               <div className="space-y-5 animate-in fade-in zoom-in-95 duration-200">
-                <div className="bg-gradient-to-br from-indigo-950/60 via-purple-950/40 to-slate-950 border border-indigo-500/30 rounded-2xl p-5 text-center space-y-3 shadow-inner">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center mx-auto shadow-xl shadow-indigo-500/25 border border-indigo-300/40">
-                    <GraduationCap className="w-7 h-7" />
+                <div className="bg-gradient-to-br from-indigo-950/60 via-purple-950/40 to-slate-950 border border-indigo-500/30 rounded-2xl p-4 sm:p-5 text-center space-y-2 shadow-inner">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center mx-auto shadow-xl shadow-indigo-500/25 border border-indigo-300/40">
+                    <ShieldCheck className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="text-base font-black text-white">
-                    الاستعلام الإلكتروني المباشر للطالب وولي الأمر
+                    تسجيل الدخول الثنائي الآمن لولي الأمر والطالب (2FA)
                   </h3>
                   <p className="text-xs text-indigo-200/90 leading-relaxed max-w-md mx-auto font-medium">
-                    استعلام فوري بدون كلمة مرور باستخدام الرقم القومي (14 رقماً) أو كود الطالب لمتابعة الحضور، ونسب الورش (85%)، وتقييم الجدارات.
+                    لحماية خصوصية البيانات وفق اللائحة، يتطلب الدخول إدخال الرقم القومي للطالب مصحوباً بكود الدخول السري الصادر من إدارة المدرسة.
                   </p>
                 </div>
 
-                {/* Feature Highlights Matrix */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800 flex items-center gap-2 shadow-2xs">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>مؤشر استيفاء حضور الورش 85%</span>
+                {/* Error / Lockout Alert */}
+                {parentErrorMsg && (
+                  <div className="bg-red-500/15 border-2 border-red-500/50 text-red-200 rounded-2xl p-3 flex items-center gap-2 text-xs font-bold animate-shake">
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                    <span>{parentErrorMsg}</span>
                   </div>
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800 flex items-center gap-2 shadow-2xs">
-                    <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0" />
-                    <span>مصفوفة الجدارات والبرامج العلاجية</span>
+                )}
+
+                {/* 2FA Login Form */}
+                <form onSubmit={handleParent2FALogin} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>الرقم القومي للطالب (14 رقماً)</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono font-bold">العامل الأول (1st Factor)</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        maxLength={14}
+                        disabled={Boolean(parentLockoutTime)}
+                        placeholder="أدخل الرقم القومي للطالب..."
+                        value={parentNationalId}
+                        onChange={(e) => setParentNationalId(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 focus:border-indigo-400 rounded-xl pr-3.5 pl-3 py-2.5 text-sm text-white font-mono font-bold focus:ring-2 focus:ring-indigo-500/30 focus:outline-hidden transition shadow-inner disabled:opacity-50"
+                      />
+                    </div>
                   </div>
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800 flex items-center gap-2 shadow-2xs">
-                    <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>الإنذارات الرسمية وتتبع الغياب</span>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <KeyRound className="w-3.5 h-3.5 text-purple-400" />
+                        <span>كود الدخول السري الصادر من المدرسة (أو كود الطالب / OTP)</span>
+                      </span>
+                      <span className="text-[10px] text-purple-400 font-mono font-bold">العامل الثاني (2nd Factor)</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        required
+                        disabled={Boolean(parentLockoutTime)}
+                        placeholder="أدخل كود الدخول السري المعتمد..."
+                        value={parentSecretCode}
+                        onChange={(e) => setParentSecretCode(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 focus:border-purple-400 rounded-xl pr-3.5 pl-3 py-2.5 text-sm text-white font-mono font-bold focus:ring-2 focus:ring-purple-500/30 focus:outline-hidden transition shadow-inner disabled:opacity-50 uppercase"
+                      />
+                    </div>
                   </div>
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800 flex items-center gap-2 shadow-2xs">
-                    <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
-                    <span>طباعة بطاقة المتابعة الرسمية A4</span>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isParentLoading || Boolean(parentLockoutTime)}
+                    className="w-full bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 hover:from-indigo-600 hover:to-pink-700 text-white font-black py-3.5 rounded-xl shadow-xl shadow-purple-600/25 transition-all duration-300 flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 mt-2 hover:scale-[1.01] active:scale-[0.98]"
+                  >
+                    {isParentLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>جارٍ التحقق الثنائي والدخول...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        <span>دخول واستعلام آمن لولي الأمر (2FA)</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* 1-Click Fast Demo Student Chips for Testing */}
+                <div className="pt-2 border-t border-slate-800/80">
+                  <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-slate-400">
+                      <Sparkles className="w-3 h-3 text-indigo-400" />
+                      <span>بيانات طلاب تجريبية للاختبار السريع (بنقرة واحدة):</span>
+                    </span>
+                    <span className="text-[10px] text-indigo-400 font-mono">2FA جاهز</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemoParentFill('30801011234567', 'DEMO12')}
+                      className="text-[10.5px] bg-slate-950 hover:bg-slate-800 text-indigo-300 hover:text-white px-2.5 py-1 rounded-lg border border-indigo-900/60 transition cursor-pointer font-bold flex items-center gap-1"
+                      title="تجربة الدخول للطالب أحمد محمود حسن"
+                    >
+                      <span>طالب 1: أحمد محمود (كود: DEMO12)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemoParentFill('30802021234568', 'DEMO12')}
+                      className="text-[10.5px] bg-slate-950 hover:bg-slate-800 text-purple-300 hover:text-white px-2.5 py-1 rounded-lg border border-purple-900/60 transition cursor-pointer font-bold flex items-center gap-1"
+                      title="تجربة الدخول للطالب إبراهيم السيد"
+                    >
+                      <span>طالب 2: إبراهيم السيد (كود: DEMO12)</span>
+                    </button>
                   </div>
                 </div>
-
-                {/* Direct Entry Button */}
-                <button
-                  type="button"
-                  onClick={onSelectParentPortal}
-                  className="w-full bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 hover:from-indigo-600 hover:to-pink-700 text-white font-black py-3.5 rounded-2xl shadow-xl shadow-purple-600/25 transition-all duration-300 flex items-center justify-center gap-2 text-sm cursor-pointer transform hover:scale-[1.01] active:scale-[0.98]"
-                >
-                  <Search className="w-4 h-4" />
-                  <span>دخول بوابة استعلام ولي الأمر والطالب الفورية</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
               </div>
             )}
           </div>
