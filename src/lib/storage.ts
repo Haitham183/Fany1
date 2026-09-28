@@ -30,6 +30,7 @@ import {
   GrievanceRecord,
   AssessmentCalendarEvent,
   AuditLogEntry,
+  WorkDaysScheme,
 } from '@/types';
 import {
   MOCK_USERS,
@@ -1843,6 +1844,65 @@ export const isHolidayDate = (
     holiday: matched,
   };
 };
+
+export interface WeekDayInfo {
+  date: string; // YYYY-MM-DD
+  dayOfWeek: string; // e.g. 'الأحد'
+  formattedShort: string; // e.g. '20/09'
+  isToday: boolean;
+  isHoliday?: boolean;
+  holidayName?: string;
+  holidayType?: 'official' | 'emergency';
+}
+
+export function computeWeekDays(
+  anchorDate: Date,
+  scheme: WorkDaysScheme = 'sun_to_thu',
+  config?: SchoolConfig
+): WeekDayInfo[] {
+  const arabicDays = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const dayIndex = anchorDate.getDay(); // 0: Sun, 1: Mon, ..., 6: Sat
+
+  let startOfWeek = new Date(anchorDate);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  if (scheme === 'sun_to_thu') {
+    startOfWeek.setDate(anchorDate.getDate() - dayIndex);
+  } else if (scheme === 'sat_to_thu' || scheme === 'sat_to_wed') {
+    const diff = dayIndex === 6 ? 0 : -(dayIndex + 1);
+    startOfWeek.setDate(anchorDate.getDate() + diff);
+  }
+
+  let dayOffsets: number[] = [];
+  if (scheme === 'sun_to_thu') {
+    dayOffsets = [0, 1, 2, 3, 4];
+  } else if (scheme === 'sat_to_thu') {
+    dayOffsets = [0, 1, 2, 3, 4, 5];
+  } else if (scheme === 'sat_to_wed') {
+    dayOffsets = [0, 1, 2, 3, 4];
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  return dayOffsets.map((offset) => {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + offset);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayName = arabicDays[d.getDay()] || '';
+    const formattedShort = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const holCheck = isHolidayDate(dateStr, config);
+
+    return {
+      date: dateStr,
+      dayOfWeek: dayName,
+      formattedShort,
+      isToday: dateStr === todayStr,
+      isHoliday: holCheck.isHoliday,
+      holidayName: holCheck.holiday?.name,
+      holidayType: holCheck.holiday?.type,
+    };
+  });
+}
 
 export const checkStudentDuplicate = (
   data: { nationalId?: string; studentCode?: string; fullName?: string; id?: string } | string,
