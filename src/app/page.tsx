@@ -52,6 +52,7 @@ import { PortalSelectionScreen } from '@/components/PortalSelectionScreen';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
 import { PortalType, SocialCaseRecord } from '@/types';
 import { ToastProvider } from '@/components/ui';
+import { CommandPaletteModal } from '@/components/CommandPaletteModal';
 
 export default function HomePage() {
   return (
@@ -81,6 +82,7 @@ function MainAppContent() {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
 
   const isFullAdmin =
     currentUser.role === 'principal' ||
@@ -293,6 +295,7 @@ function MainAppContent() {
         onSelectStudentAttendance={(classId) => {
           setActiveTab('attendance');
         }}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
 
       {/* Main Layout: Sidebar on Right (RTL) + Scrollable Main Content */}
@@ -313,6 +316,7 @@ function MainAppContent() {
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
           activePortal={activePortal || undefined}
           onSwitchPortal={handleSwitchPortal}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         />
 
         {/* Content Area */}
@@ -411,7 +415,7 @@ function MainAppContent() {
             />
           )}
 
-          {activeTab === 'affairs' && (
+          {(activeTab === 'affairs' || activeTab === 'transfers') && (
             <StudentAffairsView
               students={authorizedStudents}
               classes={authorizedClasses}
@@ -419,6 +423,7 @@ function MainAppContent() {
               attendance={attendance}
               currentUser={currentUser}
               onDataChanged={refreshAllData}
+              initialTab={activeTab === 'transfers' ? 'transfers' : 'weekly_sheet'}
               onNavigateToReport={(studentId) => {
                 setSelectedReportStudentId(studentId);
                 setActiveTab('student_report');
@@ -449,7 +454,7 @@ function MainAppContent() {
             />
           )}
 
-          {activeTab === 'ministry_sheets' && (
+          {(activeTab === 'ministry_sheets' || activeTab === 'official_sheets') && (
             <OfficialMinistrySheetsView
               students={authorizedStudents}
               classes={authorizedClasses}
@@ -518,6 +523,26 @@ function MainAppContent() {
         onClose={() => setIsRoleModalOpen(false)}
         currentUser={currentUser}
         onSelectUser={handleSelectUser}
+      />
+
+      {/* Global Command Palette (Ctrl+K) */}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        students={students}
+        classes={authorizedClasses}
+        departments={authorizedDepartments}
+        currentUser={currentUser}
+        onNavigate={(tab) => setActiveTab(tab)}
+        onSelectStudentReport={(studentId) => {
+          setSelectedReportStudentId(studentId);
+          setActiveTab('student_report');
+        }}
+        onSelectClassAttendance={(classId) => {
+          setActiveTab('attendance');
+        }}
+        onOpenRoleSwitcher={() => setIsRoleModalOpen(true)}
+        onLogout={handleLogout}
       />
     </div>
   );
