@@ -49,7 +49,7 @@ import {
   DEFAULT_EGYPTIAN_HOLIDAYS,
 } from './mockData';
 import { db } from './db';
-import { runLocalStorageToIndexedDbMigration, hashNationalId, generateParentAccessCode } from './migration';
+import { runLocalStorageToIndexedDbMigration, hashNationalId, generateParentAccessCode, MIGRATION_KEY } from './migration';
 import { logAuditEvent, getAuditLogs } from './auditLogger';
 import { OFFICIAL_TERMS } from './terms';
 import { autoSyncKeyToCloud, deleteRowFromCloud } from './supabaseSync';
@@ -74,8 +74,8 @@ const STORAGE_KEYS = {
 };
 
 // In-Memory Safe Reactive Cache for PII (Students & Social Cases) to prevent storing National IDs in LocalStorage
-let inMemoryStudentsCache: Student[] = [...MOCK_STUDENTS];
-let inMemorySocialCasesCache: SocialCaseRecord[] = [...MOCK_SOCIAL_CASES];
+let inMemoryStudentsCache: Student[] = [];
+let inMemorySocialCasesCache: SocialCaseRecord[] = [];
 let inMemoryGrievancesCache: GrievanceRecord[] = [];
 let inMemoryCalendarCache: AssessmentCalendarEvent[] = [];
 
@@ -124,25 +124,24 @@ const syncClassAndDepartmentCounts = (
 export const initializeData = () => {
   if (typeof window === 'undefined') return;
 
+  const isProduction = localStorage.getItem('egyptian_school_production_mode') === 'true';
+
   // Run Async Migration to Dexie IndexedDB
   runLocalStorageToIndexedDbMigration().then(async () => {
     try {
       const dbStudents = await db.students.toArray();
-      if (dbStudents.length > 0) {
-        inMemoryStudentsCache = dbStudents;
-      }
+      inMemoryStudentsCache = dbStudents;
+
       const dbCases = await db.social_cases.toArray();
-      if (dbCases.length > 0) {
-        inMemorySocialCasesCache = dbCases;
-      }
+      inMemorySocialCasesCache = dbCases;
+
       const dbGrievances = await db.grievances.toArray();
-      if (dbGrievances.length > 0) {
-        inMemoryGrievancesCache = dbGrievances;
-      }
+      inMemoryGrievancesCache = dbGrievances;
+
       const dbCalendar = await db.assessment_calendar.toArray();
-      if (dbCalendar.length > 0) {
-        inMemoryCalendarCache = dbCalendar;
-      }
+      inMemoryCalendarCache = dbCalendar;
+
+      window.dispatchEvent(new Event('egyptian_school_storage_update'));
     } catch {
       // Non-blocking
     }
@@ -152,16 +151,22 @@ export const initializeData = () => {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(MOCK_USERS));
   }
   if (!localStorage.getItem(STORAGE_KEYS.DEPARTMENTS)) {
-    localStorage.setItem(STORAGE_KEYS.DEPARTMENTS, JSON.stringify(MOCK_DEPARTMENTS));
+    localStorage.setItem(
+      STORAGE_KEYS.DEPARTMENTS,
+      JSON.stringify(isProduction ? MOCK_DEPARTMENTS.map((d) => ({ ...d, totalStudents: 0 })) : MOCK_DEPARTMENTS)
+    );
   }
   if (!localStorage.getItem(STORAGE_KEYS.CLASSES)) {
-    localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(MOCK_CLASSES));
+    localStorage.setItem(
+      STORAGE_KEYS.CLASSES,
+      JSON.stringify(isProduction ? MOCK_CLASSES.map((c) => ({ ...c, studentCount: 0 })) : MOCK_CLASSES)
+    );
   }
   if (!localStorage.getItem(STORAGE_KEYS.ATTENDANCE)) {
-    localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(MOCK_ATTENDANCE_HISTORY));
+    localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(isProduction ? [] : MOCK_ATTENDANCE_HISTORY));
   }
   if (!localStorage.getItem(STORAGE_KEYS.NOTICES)) {
-    localStorage.setItem(STORAGE_KEYS.NOTICES, JSON.stringify(MOCK_NOTICES));
+    localStorage.setItem(STORAGE_KEYS.NOTICES, JSON.stringify(isProduction ? [] : MOCK_NOTICES));
   }
   if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(MOCK_USERS[0]));
@@ -173,13 +178,13 @@ export const initializeData = () => {
     localStorage.setItem(STORAGE_KEYS.TRANSFER_LOGS, JSON.stringify([]));
   }
   if (!localStorage.getItem(STORAGE_KEYS.WORKSHOP_VIOLATIONS)) {
-    localStorage.setItem(STORAGE_KEYS.WORKSHOP_VIOLATIONS, JSON.stringify(MOCK_WORKSHOP_VIOLATIONS));
+    localStorage.setItem(STORAGE_KEYS.WORKSHOP_VIOLATIONS, JSON.stringify(isProduction ? [] : MOCK_WORKSHOP_VIOLATIONS));
   }
   if (!localStorage.getItem(STORAGE_KEYS.COMPETENCY_UNITS)) {
     localStorage.setItem(STORAGE_KEYS.COMPETENCY_UNITS, JSON.stringify(MOCK_COMPETENCY_UNITS));
   }
   if (!localStorage.getItem(STORAGE_KEYS.COMPETENCY_ASSESSMENTS)) {
-    localStorage.setItem(STORAGE_KEYS.COMPETENCY_ASSESSMENTS, JSON.stringify(MOCK_COMPETENCY_ASSESSMENTS));
+    localStorage.setItem(STORAGE_KEYS.COMPETENCY_ASSESSMENTS, JSON.stringify(isProduction ? [] : MOCK_COMPETENCY_ASSESSMENTS));
   }
   if (!localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED)) {
     localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, JSON.stringify(false));
@@ -207,8 +212,8 @@ export const getStudents = (): Student[] => {
 
 export const getDepartments = (): Department[] => getStoredData(STORAGE_KEYS.DEPARTMENTS, MOCK_DEPARTMENTS);
 export const getClasses = (): SchoolClass[] => getStoredData(STORAGE_KEYS.CLASSES, MOCK_CLASSES);
-export const getAttendance = (): AttendanceRecord[] => getStoredData(STORAGE_KEYS.ATTENDANCE, MOCK_ATTENDANCE_HISTORY);
-export const getNotices = (): OfficialNotice[] => getStoredData(STORAGE_KEYS.NOTICES, MOCK_NOTICES);
+export const getAttendance = (): AttendanceRecord[] => getStoredData(STORAGE_KEYS.ATTENDANCE, []);
+export const getNotices = (): OfficialNotice[] => getStoredData(STORAGE_KEYS.NOTICES, []);
 
 export const getSchoolConfig = (): SchoolConfig => {
   const cfg = getStoredData(STORAGE_KEYS.CONFIG, SCHOOL_CONFIG);
@@ -231,9 +236,9 @@ export const getSchoolConfig = (): SchoolConfig => {
 };
 
 export const getTransferLogs = (): StudentTransferLog[] => getStoredData(STORAGE_KEYS.TRANSFER_LOGS, []);
-export const getWorkshopViolations = (): WorkshopViolationRecord[] => getStoredData(STORAGE_KEYS.WORKSHOP_VIOLATIONS, MOCK_WORKSHOP_VIOLATIONS);
+export const getWorkshopViolations = (): WorkshopViolationRecord[] => getStoredData(STORAGE_KEYS.WORKSHOP_VIOLATIONS, []);
 export const getCompetencyUnits = (): CompetencyUnit[] => getStoredData(STORAGE_KEYS.COMPETENCY_UNITS, MOCK_COMPETENCY_UNITS);
-export const getCompetencyAssessments = (): StudentCompetencyAssessment[] => getStoredData(STORAGE_KEYS.COMPETENCY_ASSESSMENTS, MOCK_COMPETENCY_ASSESSMENTS);
+export const getCompetencyAssessments = (): StudentCompetencyAssessment[] => getStoredData(STORAGE_KEYS.COMPETENCY_ASSESSMENTS, []);
 export const getSocialCases = (): SocialCaseRecord[] => inMemorySocialCasesCache;
 export const getGrievances = (): GrievanceRecord[] => inMemoryGrievancesCache;
 export const getAssessmentCalendarEvents = (): AssessmentCalendarEvent[] => inMemoryCalendarCache;
@@ -2527,13 +2532,149 @@ export const importBackupData = (jsonString: string): { success: boolean; messag
 // Reset & Defaults
 // =========================================================================
 
-export const resetToDefaultData = () => {
+/**
+ * Wipes the database clean for actual production deployment in a new real school.
+ * Clears all student records, attendance, notices, social cases, violations, and assessments from IndexedDB and storage.
+ * Preserves essential administrative accounts, default industrial departments/classes layout, and CBE units catalog.
+ */
+export const wipeDatabaseForProduction = async (): Promise<void> => {
   if (typeof window === 'undefined') return;
+
+  try {
+    // 1. Clear IndexedDB Tables via Dexie
+    await db.transaction(
+      'rw',
+      [
+        db.students,
+        db.attendance,
+        db.notices,
+        db.workshop_violations,
+        db.competency_assessments,
+        db.competency_verifications,
+        db.student_portfolios,
+        db.social_cases,
+        db.transfer_logs,
+        db.grievances,
+        db.assessment_calendar,
+        db.pending_sync_queue,
+        db.audit_log,
+      ],
+      async () => {
+        await db.students.clear();
+        await db.attendance.clear();
+        await db.notices.clear();
+        await db.workshop_violations.clear();
+        await db.competency_assessments.clear();
+        await db.competency_verifications.clear();
+        await db.student_portfolios.clear();
+        await db.social_cases.clear();
+        await db.transfer_logs.clear();
+        await db.grievances.clear();
+        await db.assessment_calendar.clear();
+        await db.pending_sync_queue.clear();
+        await db.audit_log.clear();
+
+        await db.audit_log.put({
+          id: `audit_reset_${Date.now()}`,
+          actor_id: 'system',
+          actor_name: 'مسئول المنظومة',
+          action: 'factory_reset_clean_production',
+          entity: 'system_storage',
+          created_at: new Date().toISOString(),
+          new_value: { status: 'wiped_clean_for_production', students: 0, attendance: 0 },
+        });
+      }
+    );
+  } catch (err) {
+    console.error('Failed to clear IndexedDB tables:', err);
+  }
+
+  // 2. Clear In-Memory Caches
+  inMemoryStudentsCache = [];
+  inMemorySocialCasesCache = [];
+  inMemoryGrievancesCache = [];
+  inMemoryCalendarCache = [];
+
+  // 3. Reset LocalStorage to clean state
+  localStorage.clear();
+
+  const cleanClasses = MOCK_CLASSES.map((c) => ({ ...c, studentCount: 0 }));
+  const cleanDepts = MOCK_DEPARTMENTS.map((d) => ({ ...d, totalStudents: 0 }));
+
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(MOCK_USERS));
+  localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(MOCK_USERS[0]));
+  localStorage.setItem(STORAGE_KEYS.DEPARTMENTS, JSON.stringify(cleanDepts));
+  localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(cleanClasses));
+  localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(SCHOOL_CONFIG));
+  localStorage.setItem(STORAGE_KEYS.COMPETENCY_UNITS, JSON.stringify(MOCK_COMPETENCY_UNITS));
+
+  // Empty operational records
+  localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.NOTICES, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.WORKSHOP_VIOLATIONS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.COMPETENCY_ASSESSMENTS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.COMPETENCY_VERIFICATIONS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.STUDENT_PORTFOLIOS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.TRANSFER_LOGS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, JSON.stringify(false));
+
+  // Lock production mode & prevent migration from re-inserting demo mock students
+  localStorage.setItem(MIGRATION_KEY, 'true');
+  localStorage.setItem('egyptian_school_production_mode', 'true');
+
+  window.dispatchEvent(new Event('egyptian_school_storage_update'));
+  window.location.reload();
+};
+
+/**
+ * Resets the system with Sample Demo Data for testing or demonstration.
+ */
+export const resetToDemoData = async (): Promise<void> => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    await db.transaction(
+      'rw',
+      [
+        db.students,
+        db.attendance,
+        db.notices,
+        db.workshop_violations,
+        db.competency_assessments,
+        db.competency_verifications,
+        db.student_portfolios,
+        db.social_cases,
+        db.transfer_logs,
+        db.grievances,
+        db.assessment_calendar,
+        db.pending_sync_queue,
+      ],
+      async () => {
+        await db.students.clear();
+        await db.attendance.clear();
+        await db.notices.clear();
+        await db.workshop_violations.clear();
+        await db.competency_assessments.clear();
+        await db.social_cases.clear();
+        await db.transfer_logs.clear();
+        await db.grievances.clear();
+        await db.assessment_calendar.clear();
+        await db.pending_sync_queue.clear();
+      }
+    );
+  } catch {
+    // Non-blocking
+  }
+
   localStorage.clear();
   inMemoryStudentsCache = [...MOCK_STUDENTS];
   inMemorySocialCasesCache = [...MOCK_SOCIAL_CASES];
   inMemoryGrievancesCache = [];
   inMemoryCalendarCache = [];
+
+  await runLocalStorageToIndexedDbMigration(true);
   initializeData();
   window.location.reload();
 };
+
+export const resetToDefaultData = wipeDatabaseForProduction;

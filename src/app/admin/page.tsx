@@ -28,6 +28,8 @@ import {
   login,
   logout,
   resetToDefaultData,
+  wipeDatabaseForProduction,
+  resetToDemoData,
   exportBackupData,
   importBackupData,
 } from '@/lib/storage';
@@ -50,6 +52,7 @@ import {
   Download,
   Upload,
   RotateCcw,
+  RefreshCw,
   ExternalLink,
   CheckCircle2,
   AlertTriangle,
@@ -211,10 +214,23 @@ export default function AdminPage() {
     reader.readAsText(file);
   };
 
-  const handleResetData = () => {
-    if (window.confirm('تحذير إداري: هل ترغب في إعادة تهيئة النظام وضبط المصنع لقاعدة البيانات؟ سيتم مسح كافة السجلات المدخلة.')) {
-      resetToDefaultData();
-      refreshAllData();
+  const handleResetData = async () => {
+    if (
+      window.confirm(
+        'تحذير إداري:\nهل ترغب في تفريغ المنظومة وإعادة ضبط المصنع للبدء الفعلي؟ سيتم مسح كافة سجلات الطلاب والغياب وقواعد البيانات.'
+      )
+    ) {
+      await wipeDatabaseForProduction();
+    }
+  };
+
+  const handleResetDemoData = async () => {
+    if (
+      window.confirm(
+        'هل ترغب في إعادة تعيين وشحن البيانات التجريبية (Demo Data) لأغراض الاختبار والتدريب؟'
+      )
+    ) {
+      await resetToDemoData();
     }
   };
 
@@ -926,19 +942,29 @@ export default function AdminPage() {
               {/* Factory Reset Database */}
               <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h4 className="font-bold text-xs text-slate-300">إعادة تهيئة النظام وضبط المصنع</h4>
+                  <h4 className="font-bold text-xs text-slate-300">إعادة تهيئة وتفريغ النظام وضبط المصنع</h4>
                   <p className="text-[11px] text-slate-500">
-                    إعادة ضبط قاعدة البيانات وحسابات المنظومة إلى التهيئة الأساسية للمدرسة
+                    تفريغ كامل لقواعد البيانات وسجلات الطلاب لبدء مدرسة جديدة أو إعادة شحن البيانات التجريبية
                   </p>
                 </div>
 
-                <button
-                  onClick={handleResetData}
-                  className="bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/60 font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-2 cursor-pointer"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>إعادة تهيئة وضبط المصنع</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleResetData}
+                    className="bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-800/60 font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>تفريغ وتصفير النظام للإنتاج (0 طلاب)</span>
+                  </button>
+
+                  <button
+                    onClick={handleResetDemoData}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>إعادة شحن التجريبي (Demo)</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

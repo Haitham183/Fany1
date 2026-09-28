@@ -26,6 +26,7 @@ import {
   getWorkshopViolations,
   logout,
   resetToDefaultData,
+  wipeDatabaseForProduction,
 } from '@/lib/storage';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
@@ -232,10 +233,13 @@ function MainAppContent() {
     }
   };
 
-  const handleResetData = () => {
-    if (window.confirm('تحذير إداري: هل ترغب في إعادة تهيئة قاعدة البيانات وضبط المصنع؟')) {
-      resetToDefaultData();
-      refreshAllData();
+  const handleResetData = async () => {
+    if (
+      window.confirm(
+        'تحذير إداري:\nهل ترغب في إعادة تهيئة قاعدة البيانات وتفريغ كافة السجلات للبدء الفعلي لمدرسة جديدة؟'
+      )
+    ) {
+      await wipeDatabaseForProduction();
     }
   };
 

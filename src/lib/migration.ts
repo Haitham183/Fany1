@@ -50,15 +50,14 @@ export const generateParentAccessCode = (): string => {
   return code;
 };
 
-const MIGRATION_KEY = 'egyptian_school_migrated_to_indexeddb_v2';
+export const MIGRATION_KEY = 'egyptian_school_migrated_to_indexeddb_v2';
 
-export const runLocalStorageToIndexedDbMigration = async () => {
+export const runLocalStorageToIndexedDbMigration = async (forceSeed: boolean = false) => {
   if (typeof window === 'undefined') return;
 
   const isMigrated = localStorage.getItem(MIGRATION_KEY);
-  const studentsCountInDb = await db.students.count();
 
-  if (isMigrated && studentsCountInDb > 0) {
+  if (isMigrated && !forceSeed) {
     return;
   }
 

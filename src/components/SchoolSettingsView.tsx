@@ -12,6 +12,8 @@ import {
   deleteHoliday,
   resetDefaultHolidays,
   updateAcademicCalendar,
+  wipeDatabaseForProduction,
+  resetToDemoData,
 } from '@/lib/storage';
 import { pushAllDataToCloud, pullAllDataFromCloud } from '@/lib/supabaseSync';
 import {
@@ -43,6 +45,7 @@ import {
   Database,
   Download,
   Upload,
+  RefreshCw,
   CheckCircle2,
   AlertCircle,
   Calendar,
@@ -1808,35 +1811,51 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                 </label>
               </div>
 
-              {/* 3. Factory Reset / New School Wipe */}
-              <div className="md:col-span-2 bg-red-50/50 rounded-2xl p-5 border border-red-200 space-y-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              {/* 3. Factory Reset / New School Wipe for Production */}
+              <div className="md:col-span-2 bg-red-50/70 rounded-2xl p-5 border border-red-200 space-y-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="space-y-1 max-w-2xl">
                   <div className="flex items-center gap-2 font-black text-red-950 text-sm">
                     <Trash2 className="w-4 h-4 text-red-600" />
-                    <span>تصفير وتفريغ النظام لبدء مدرسة جديدة بالكامل (Factory Reset)</span>
+                    <span>تصفير وتفريغ المنظومة للنشر الفعلي ومدرسة جديدة (Factory Reset)</span>
                   </div>
                   <p className="text-xs text-red-800 leading-relaxed">
-                    مسح كافة البيانات التجريبية وسجلات الطلاب والغياب والإنذارات والورش لبدء استخدام المنظومة في مدرسة جديدة خالية من أي بيانات سابقة.
-                    (يبقى حساب المدير العام متاحاً باسم: <strong className="font-mono">admin</strong> وكلمة المرور: <strong className="font-mono">123</strong>).
+                    مسح وتفريغ كامل لسجلات الطلاب وقواعد بيانات IndexedDB والغياب والإنذارات والمخالفات والتقييمات، مع الإبقاء على الحسابات الإدارية الأساسية (المدير: <strong className="font-mono">admin</strong> / <strong className="font-mono">123</strong>) وهيكل الأقسام لتصبح المنظومة فارغة 100% وجاهزة لبدء العام الدراسي واستيراد الطلاب الفعليين.
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const confirmed = window.confirm(
-                      'تحذير هام:\nهل أنت متأكد تماماً من رغبتك في تفريغ قاعدة البيانات وتصفير كافة السجلات التجريبية لمدرسة جديدة؟\nلا يمكن التراجع عن هذا الإجراء إلا باستعادة نسخة احتياطية سابقة.'
-                    );
-                    if (confirmed) {
-                      localStorage.clear();
-                      window.location.reload();
-                    }
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white font-black px-6 py-3 rounded-xl text-xs transition flex items-center gap-2 cursor-pointer shadow-md shrink-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>تصفير النظام وتفريغ كافة البيانات الآن</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const confirmed = window.confirm(
+                        'تحذير إداري نهائي:\nهل أنت متأكد تماماً من رغبتك في تفريغ قاعدة البيانات بالكامل وتصفير جميع سجلات الطلاب والغياب لبدء مدرسة جديدة خالية؟\n\nسيتم تفريغ كافة الجداول والبدء بنظام نظيف تماماً.'
+                      );
+                      if (confirmed) {
+                        await wipeDatabaseForProduction();
+                      }
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white font-black px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>تفريغ وتصفير النظام للإنتاج (0 طلاب)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const confirmed = window.confirm(
+                        'إعادة شحن البيانات التجريبية (Demo Data):\nهل ترغب في إعادة تحميل بيانات الطلاب والورش التجريبية لأغراض التدريب والتجربة؟'
+                      );
+                      if (confirmed) {
+                        await resetToDemoData();
+                      }
+                    }}
+                    className="bg-slate-800 hover:bg-slate-900 text-slate-200 font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>إعادة البيانات التجريبية (Demo)</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
