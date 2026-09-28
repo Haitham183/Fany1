@@ -13,7 +13,7 @@ import {
   CompetencyUnit,
   StudentCompetencyAssessment,
 } from '@/types';
-import { getCompetencyUnits, getCompetencyAssessments } from '@/lib/storage';
+import { getCompetencyUnits, getCompetencyAssessments, calculateStudentAttendanceStats } from '@/lib/storage';
 import {
   Search,
   Printer,
@@ -153,21 +153,26 @@ export const StudentReportCardView: React.FC<StudentReportCardViewProps> = ({
     };
   }, [currentStudent]);
 
-  // Calculate Metrics
-  const totalDays = 60; // Standard term working days
-  const absentDays = currentStudent?.totalAbsenceDays || 0;
-  const presentDays = Math.max(0, totalDays - absentDays);
-  const generalAttendanceRate = Math.round((presentDays / totalDays) * 100);
-  const generalAbsenceRate = Math.max(0, 100 - generalAttendanceRate);
+  // Dynamic Cumulative Attendance Metrics calculated from actual recorded days from day 1
+  const attendanceStats = useMemo(() => {
+    if (!currentStudent) return null;
+    return calculateStudentAttendanceStats(currentStudent, attendance, schoolConfig);
+  }, [currentStudent, attendance, schoolConfig]);
 
-  const totalWorkshopHours = 120;
-  const workshopAbsentHours = currentStudent?.workshopAbsenceHours || 0;
-  const workshopPresentHours = Math.max(0, totalWorkshopHours - workshopAbsentHours);
-  const workshopAttendanceRate = Math.round((workshopPresentHours / totalWorkshopHours) * 100);
-  const workshopAbsenceRate = Math.max(0, 100 - workshopAttendanceRate);
+  const totalDays = attendanceStats?.totalRecordedDays || 0;
+  const absentDays = attendanceStats?.absentDays || 0;
+  const presentDays = attendanceStats?.presentDays || 0;
+  const generalAttendanceRate = attendanceStats?.attendanceRate ?? 100;
+  const generalAbsenceRate = attendanceStats?.absenceRate ?? 0;
 
-  const isWorkshopEligible = workshopAttendanceRate >= (schoolConfig.practicalMinAttendanceRate || 85);
-  const isTheoreticalEligible = generalAttendanceRate >= (schoolConfig.theoreticalMinAttendanceRate || 75);
+  const totalWorkshopHours = attendanceStats?.workshopRecordedHours || 0;
+  const workshopAbsentHours = attendanceStats?.workshopAbsentHours || 0;
+  const workshopPresentHours = attendanceStats?.workshopPresentHours || 0;
+  const workshopAttendanceRate = attendanceStats?.workshopAttendanceRate ?? 100;
+  const workshopAbsenceRate = attendanceStats?.workshopAbsenceRate ?? 0;
+
+  const isWorkshopEligible = attendanceStats?.isPracticalEligible ?? true;
+  const isTheoreticalEligible = attendanceStats?.isTheoreticalEligible ?? true;
 
   const handlePrint = () => {
     window.print();
@@ -452,18 +457,18 @@ export const StudentReportCardView: React.FC<StudentReportCardViewProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             {/* 1. Present Days */}
             <div className="bg-emerald-50/80 border-2 border-emerald-500/60 p-3 rounded-xl space-y-1 shadow-2xs">
-              <div className="text-[11px] font-black text-emerald-900">عدد أيام الحضور</div>
+              <div className="text-[11px] font-black text-emerald-900">أيام الحضور الفعلي</div>
               <div className="text-2xl font-black font-mono text-emerald-800">
                 {presentDays} <span className="text-xs font-bold">يوم</span>
               </div>
               <div className="text-[10px] font-bold text-emerald-700">
-                من إجمالي {totalDays} يوم دراسي
+                من إجمالي {totalDays} يوم تحضير مسجل
               </div>
             </div>
 
             {/* 2. Absent Days */}
             <div className="bg-red-50/80 border-2 border-red-500/60 p-3 rounded-xl space-y-1 shadow-2xs">
-              <div className="text-[11px] font-black text-red-900">عدد أيام الغياب</div>
+              <div className="text-[11px] font-black text-red-900">أيام الغياب الفعلي</div>
               <div className="text-2xl font-black font-mono text-red-800">
                 {absentDays} <span className="text-xs font-bold">يوم</span>
               </div>
@@ -474,7 +479,7 @@ export const StudentReportCardView: React.FC<StudentReportCardViewProps> = ({
 
             {/* 3. Attendance Rate % */}
             <div className="bg-blue-50/80 border-2 border-blue-500/60 p-3 rounded-xl space-y-1 shadow-2xs">
-              <div className="text-[11px] font-black text-blue-950">نسبة الحضور</div>
+              <div className="text-[11px] font-black text-blue-950">نسبة الحضور الفعلي</div>
               <div className={`text-2xl font-black font-mono ${generalAttendanceRate >= (schoolConfig.theoreticalMinAttendanceRate || 75) ? 'text-blue-900' : 'text-red-700'}`}>
                 {generalAttendanceRate}%
               </div>
@@ -485,7 +490,7 @@ export const StudentReportCardView: React.FC<StudentReportCardViewProps> = ({
 
             {/* 4. Absence Rate % */}
             <div className="bg-amber-50/80 border-2 border-amber-500/60 p-3 rounded-xl space-y-1 shadow-2xs">
-              <div className="text-[11px] font-black text-amber-950">نسبة الغياب</div>
+              <div className="text-[11px] font-black text-amber-950">نسبة الغياب الفعلي</div>
               <div className={`text-2xl font-black font-mono ${generalAbsenceRate > 15 ? 'text-red-700' : 'text-amber-900'}`}>
                 {generalAbsenceRate}%
               </div>
@@ -499,7 +504,7 @@ export const StudentReportCardView: React.FC<StudentReportCardViewProps> = ({
           <div className="bg-slate-50 border border-slate-300 rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
             <div>
               <span className="text-slate-500 text-[10.5px] block">ساعات حضور الورش:</span>
-              <span className="font-mono font-bold text-slate-900">{workshopPresentHours} من {totalWorkshopHours} س</span>
+              <span className="font-mono font-bold text-slate-900">{workshopPresentHours} من {totalWorkshopHours} س مسجلة</span>
             </div>
             <div>
               <span className="text-slate-500 text-[10.5px] block">ساعات غياب الورش:</span>

@@ -415,49 +415,49 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
       )}
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+      <div className="flex items-center gap-2.5 border-b border-slate-200 pb-2.5 overflow-x-auto">
         <button
           onClick={() => setActiveTab('weekly_sheet')}
-          className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
             activeTab === 'weekly_sheet'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-xs'
           }`}
         >
-          <Calendar className="w-4 h-4" /> شيت الغياب الأسبوعي للفصل
+          <Calendar className="w-4 h-4 text-amber-400" /> شيت الغياب الأسبوعي للفصل
         </button>
 
         <button
           onClick={() => setActiveTab('student_roster')}
-          className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
             activeTab === 'student_roster'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-xs'
           }`}
         >
-          <Users className="w-4 h-4" /> سجل وقوائم الطلاب ({students.length})
+          <Users className="w-4 h-4 text-emerald-400" /> سجل وقوائم الطلاب ({students.length})
         </button>
 
         <button
           onClick={() => setActiveTab('excuses')}
-          className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
             activeTab === 'excuses'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-xs'
           }`}
         >
-          <FileCheck2 className="w-4 h-4" /> اعتماد وتعديل الأعذار الطبية
+          <FileCheck2 className="w-4 h-4 text-indigo-400" /> اعتماد وتعديل الأعذار الطبية
         </button>
 
         <button
           onClick={() => setActiveTab('transfers')}
-          className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
             activeTab === 'transfers'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-xs'
           }`}
         >
-          <History className="w-4 h-4" /> سجل التحويلات بين الفصول ({transferLogs.length})
+          <History className="w-4 h-4 text-purple-400" /> سجل التحويلات بين الفصول ({transferLogs.length})
         </button>
       </div>
 

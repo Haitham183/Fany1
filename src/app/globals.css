@@ -7,19 +7,26 @@
   }
   
   html, body {
-    font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background-color: #f8fafc;
     color: #0f172a;
     direction: rtl;
     text-align: right;
-    letter-spacing: normal !important;
+    letter-spacing: 0 !important;
     font-feature-settings: "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 800;
+    letter-spacing: -0.01em;
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -31,7 +38,7 @@
 
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 4px;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -40,22 +47,52 @@
 
 /* Custom scrollbar utility */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
+  height: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.4);
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.8);
-  border-radius: 4px;
+  background: rgba(100, 116, 139, 0.6);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.9);
+}
+
+/* Modern Card Glass & Elevation Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glass-panel-dark {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.modal-backdrop-blur {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 /* =========================================================================
-   A4 Professional Print Engine for Egyptian Ministry Forms & Registers
+   A4 Professional Print & PDF Engine for Egyptian Ministry Forms & Registers
    ========================================================================= */
 @media print {
   @page {
-    size: A4;
+    size: A4 portrait;
+    margin: 8mm 10mm 8mm 10mm;
+  }
+
+  @page landscape {
+    size: A4 landscape;
     margin: 8mm 10mm 8mm 10mm;
   }
 
@@ -75,8 +112,8 @@
     padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-size: 10.5pt !important;
-    line-height: 1.4 !important;
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
     overflow: visible !important;
   }
 
@@ -86,7 +123,7 @@
   aside,
   button:not(.print-include),
   nav,
-  input,
+  input:not([type="checkbox"]),
   select,
   .no-print-area {
     display: none !important;
@@ -99,6 +136,7 @@
 
   .print-only {
     display: block !important;
+    visibility: visible !important;
   }
 
   /* Unwraps modal dialogs during printing */
@@ -129,12 +167,12 @@
   .print-card,
   .official-border {
     border: 2px solid #000000 !important;
-    border-radius: 6px !important;
+    border-radius: 4px !important;
     box-shadow: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     margin: 0 0 5mm 0 !important;
-    padding: 5mm 6mm !important;
+    padding: 4mm 6mm !important;
     width: 100% !important;
     max-width: 100% !important;
     background: #ffffff !important;
@@ -145,8 +183,9 @@
   table {
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 9pt !important;
+    font-size: 8.5pt !important;
     page-break-inside: auto;
+    margin-bottom: 4mm !important;
   }
 
   thead {
@@ -165,17 +204,55 @@
 
   th, td {
     border: 1px solid #000000 !important;
-    padding: 3px 4px !important;
+    padding: 3px 5px !important;
     color: #000000 !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
     vertical-align: middle !important;
-    line-height: 1.2 !important;
+    line-height: 1.25 !important;
   }
 
   thead th {
     background-color: #f1f5f9 !important;
     font-weight: 800 !important;
-    font-size: 8.5pt !important;
+    font-size: 8pt !important;
+    text-align: center !important;
+  }
+
+  /* Official Ministry Header Layout in Print */
+  .official-print-header {
+    border-bottom: 2px solid #000000 !important;
+    padding-bottom: 3mm !important;
+    margin-bottom: 4mm !important;
+  }
+
+  /* Official Signatures Grid */
+  .official-signatures-box {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+    margin-top: 6mm !important;
+    padding-top: 4mm !important;
+    border-top: 1.5px dashed #000000 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    text-align: center !important;
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+  }
+
+  /* Official Stamp Placeholder */
+  .official-stamp-box {
+    border: 1.5px dashed #000000 !important;
+    border-radius: 50% !important;
+    width: 85px !important;
+    height: 85px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+    font-size: 8pt !important;
+    font-weight: bold !important;
+    color: #000000 !important;
   }
 
   /* Text & badges clarity in print */
@@ -190,7 +267,7 @@
   .print-page-break {
     page-break-after: always !important;
     break-after: page !important;
-    margin-bottom: 20mm !important;
+    margin-bottom: 15mm !important;
   }
 }
 

@@ -94,13 +94,13 @@ export const OfficialMinistrySheetsView: React.FC<OfficialMinistrySheetsViewProp
       </div>
 
       {/* Tabs Navigation (No Print) */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3 no-print">
+      <div className="flex flex-wrap gap-2.5 border-b border-slate-200 pb-3 no-print">
         <button
           onClick={() => setActiveSheetTab('class_rosters')}
-          className={`px-4 py-2.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 ${
             activeSheetTab === 'class_rosters'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-xs'
           }`}
         >
           <BookOpen className="w-4 h-4 text-emerald-400" /> قوائم الفصول الدراسية المعتمدة (A4 / PDF)
@@ -108,35 +108,35 @@ export const OfficialMinistrySheetsView: React.FC<OfficialMinistrySheetsViewProp
 
         <button
           onClick={() => setActiveSheetTab('sheet_1_ser')}
-          className={`px-4 py-2.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 ${
             activeSheetTab === 'sheet_1_ser'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-xs'
           }`}
         >
-          <FileSpreadsheet className="w-4 h-4" /> مسودة شيت 1 سر الشهري (الغياب والإنذارات)
+          <FileSpreadsheet className="w-4 h-4 text-amber-400" /> مسودة شيت 1 سر الشهري (الغياب والإنذارات)
         </button>
 
         <button
           onClick={() => setActiveSheetTab('register_41')}
-          className={`px-4 py-2.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 ${
             activeSheetTab === 'register_41'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-xs'
           }`}
         >
-          <Users className="w-4 h-4" /> سجل 41 مستجدين (الصف الأول وقيد الطلاب)
+          <Users className="w-4 h-4 text-indigo-400" /> سجل 41 مستجدين (الصف الأول وقيد الطلاب)
         </button>
 
         <button
           onClick={() => setActiveSheetTab('register_5')}
-          className={`px-4 py-2.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 ${
             activeSheetTab === 'register_5'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-400/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-xs'
           }`}
         >
-          <FileText className="w-4 h-4" /> سجل 5 سلوك ومواظبة الشامل
+          <FileText className="w-4 h-4 text-teal-400" /> سجل 5 سلوك ومواظبة الشامل
         </button>
       </div>
 

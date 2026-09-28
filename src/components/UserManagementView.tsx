@@ -19,6 +19,7 @@ import {
   Building2,
   ShieldAlert,
   GraduationCap,
+  HeartHandshake,
 } from 'lucide-react';
 
 interface UserManagementViewProps {
@@ -59,6 +60,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     canViewReports: true,
     canManageCompetencies: true,
     canLogViolations: true,
+    canManageSocialCases: false,
   });
 
   const handleOpenAdd = () => {
@@ -82,6 +84,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       canViewReports: true,
       canManageCompetencies: true,
       canLogViolations: true,
+      canManageSocialCases: false,
     });
     setIsModalOpen(true);
   };
@@ -97,16 +100,17 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormPhone(user.phone || '');
     setFormAssignedClasses(user.assignedClassIds || []);
     setFormPermissions({
-      canTakeAttendance: user.customPermissions?.canTakeAttendance ?? true,
-      canManageStudents: user.customPermissions?.canManageStudents ?? (user.role === 'principal' || user.role === 'affairs_deputy' || user.role === 'affairs_officer'),
+      canTakeAttendance: user.customPermissions?.canTakeAttendance ?? (user.role !== 'social_worker'),
+      canManageStudents: user.customPermissions?.canManageStudents ?? (user.role === 'principal' || user.role === 'affairs_deputy' || user.role === 'affairs_officer' || user.role === 'social_worker'),
       canTransferStudents: user.customPermissions?.canTransferStudents ?? (user.role === 'principal' || user.role === 'affairs_deputy' || user.role === 'affairs_officer'),
-      canApproveExcuses: user.customPermissions?.canApproveExcuses ?? (user.role === 'principal' || user.role === 'affairs_deputy' || user.role === 'affairs_officer'),
-      canIssueNotices: user.customPermissions?.canIssueNotices ?? (user.role === 'principal' || user.role === 'affairs_deputy' || user.role === 'affairs_officer'),
+      canApproveExcuses: user.customPermissions?.canApproveExcuses ?? (user.role === 'principal' || user.role === 'affairs_deputy' || user.role === 'affairs_officer' || user.role === 'social_worker'),
+      canIssueNotices: user.customPermissions?.canIssueNotices ?? (user.role === 'principal' || user.role === 'affairs_deputy' || user.role === 'affairs_officer' || user.role === 'social_worker'),
       canManageSchoolSettings: user.customPermissions?.canManageSchoolSettings ?? (user.role === 'principal'),
       canManageUsers: user.customPermissions?.canManageUsers ?? (user.role === 'principal'),
       canViewReports: user.customPermissions?.canViewReports ?? true,
-      canManageCompetencies: user.customPermissions?.canManageCompetencies ?? true,
+      canManageCompetencies: user.customPermissions?.canManageCompetencies ?? (user.role !== 'social_worker'),
       canLogViolations: user.customPermissions?.canLogViolations ?? true,
+      canManageSocialCases: user.customPermissions?.canManageSocialCases ?? (user.role === 'principal' || user.role === 'social_worker'),
     });
     setIsModalOpen(true);
   };
@@ -154,6 +158,22 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canViewReports: true,
         canManageCompetencies: true,
         canLogViolations: true,
+        canManageSocialCases: false,
+      });
+    } else if (role === 'social_worker') {
+      setFormRoleTitle('الأخصائي الاجتماعي والتربوي');
+      setFormPermissions({
+        canTakeAttendance: false,
+        canManageStudents: true,
+        canTransferStudents: false,
+        canApproveExcuses: true,
+        canIssueNotices: true,
+        canManageSchoolSettings: false,
+        canManageUsers: false,
+        canViewReports: true,
+        canManageCompetencies: false,
+        canLogViolations: true,
+        canManageSocialCases: true,
       });
     } else if (role === 'dept_head') {
       setFormRoleTitle('رئيس قسم صناعي');
@@ -168,6 +188,37 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canViewReports: true,
         canManageCompetencies: true,
         canLogViolations: true,
+        canManageSocialCases: false,
+      });
+    } else if (role === 'external_verifier') {
+      setFormRoleTitle('محقق خارجي / ممثل سوق العمل');
+      setFormPermissions({
+        canTakeAttendance: false,
+        canManageStudents: false,
+        canTransferStudents: false,
+        canApproveExcuses: false,
+        canIssueNotices: false,
+        canManageSchoolSettings: false,
+        canManageUsers: false,
+        canViewReports: true,
+        canManageCompetencies: true,
+        canLogViolations: false,
+        canManageSocialCases: false,
+      });
+    } else if (role === 'system_admin') {
+      setFormRoleTitle('مسئول النظام التقني');
+      setFormPermissions({
+        canTakeAttendance: true,
+        canManageStudents: true,
+        canTransferStudents: true,
+        canApproveExcuses: true,
+        canIssueNotices: true,
+        canManageSchoolSettings: true,
+        canManageUsers: true,
+        canViewReports: true,
+        canManageCompetencies: true,
+        canLogViolations: true,
+        canManageSocialCases: true,
       });
     } else {
       setFormRoleTitle('معلم / مدرب ورشة');
@@ -182,6 +233,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canViewReports: false,
         canManageCompetencies: true,
         canLogViolations: true,
+        canManageSocialCases: false,
       });
     }
   };
@@ -232,6 +284,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         return <Briefcase className="w-5 h-5 text-indigo-600" />;
       case 'affairs_officer':
         return <Briefcase className="w-5 h-5 text-blue-600" />;
+      case 'social_worker':
+        return <HeartHandshake className="w-5 h-5 text-teal-600" />;
       case 'dept_head':
         return <Zap className="w-5 h-5 text-purple-600" />;
       default:
@@ -376,6 +430,11 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     ✓ إدارة الصلاحيات
                   </span>
                 )}
+                {user.customPermissions?.canManageSocialCases && (
+                  <span className="bg-teal-100 text-teal-900 font-semibold px-2 py-0.5 rounded border border-teal-200">
+                    ✓ الإرشاد والحالات الاجتماعية
+                  </span>
+                )}
               </div>
             </div>
           );
@@ -424,8 +483,11 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     <option value="principal">مدير عام المدرسة (صلاحيات كاملة)</option>
                     <option value="affairs_deputy">وكيل شئون الطلاب</option>
                     <option value="affairs_officer">مسئول شئون الطلاب</option>
+                    <option value="social_worker">أخصائي اجتماعي وتربوي (بوابة الإرشاد والحالات)</option>
                     <option value="dept_head">رئيس قسم صناعي</option>
                     <option value="teacher">معلم / مدرب ورشة</option>
+                    <option value="external_verifier">محقق خارجي / ممثل سوق العمل</option>
+                    <option value="system_admin">مسئول النظام التقني (مدير تقني)</option>
                   </select>
                 </div>
               </div>
@@ -466,7 +528,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     onChange={(e) => setFormDeptId(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   >
-                    <option value="">عام / إدارة المدرسة</option>
+                    <option value="">عام / إدارة المدرسة / الإرشاد</option>
                     {departments.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.name}
@@ -591,6 +653,16 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                       className="rounded text-red-600 focus:ring-red-500"
                     />
                     <span className="font-semibold text-slate-800">تسجيل مخالفات السلامة والهروب</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-teal-200 sm:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={formPermissions.canManageSocialCases}
+                      onChange={(e) => setFormPermissions({ ...formPermissions, canManageSocialCases: e.target.checked })}
+                      className="rounded text-teal-600 focus:ring-teal-500"
+                    />
+                    <span className="font-bold text-teal-900">إدارة ودراسة حالات الأخصائي الاجتماعي والإرشاد السلوكي والتربوي</span>
                   </label>
                 </div>
               </div>

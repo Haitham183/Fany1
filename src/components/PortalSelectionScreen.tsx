@@ -115,8 +115,8 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
     },
     {
       id: 'competencies',
-      roleKey: 'competency_officer',
-      title: 'مسئول الجدارات والتقييم',
+      roleKey: 'external_verifier',
+      title: 'مسئول الجدارات والتحقق',
       subtitle: 'التقييم والتحقق ونسب الورش',
       badge: 'جدارات مهنية',
       icon: Award,
@@ -196,8 +196,10 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
         return 'affairs';
       case 'social_worker':
         return 'social_worker';
-      case 'competency_officer':
+      case 'external_verifier':
         return 'competencies';
+      case 'system_admin':
+        return 'admin';
       case 'dept_head':
         return 'dept_head';
       case 'teacher':

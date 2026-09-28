@@ -48,6 +48,8 @@ import {
   Calendar,
   RotateCcw,
   FileCheck2,
+  Scale,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface SchoolSettingsViewProps {
@@ -65,7 +67,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
   currentUser,
   onSettingsSaved,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'school_info' | 'departments' | 'classes' | 'calendar' | 'backup'>(
+  const [activeSubTab, setActiveSubTab] = useState<'school_info' | 'cbe_regulations' | 'departments' | 'classes' | 'calendar' | 'backup'>(
     'school_info'
   );
 
@@ -373,6 +375,17 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
           }`}
         >
           <Building2 className="w-4 h-4" /> بيانات وهوية المدرسة والمديرية
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('cbe_regulations')}
+          className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 cursor-pointer ${
+            activeSubTab === 'cbe_regulations'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Scale className="w-4 h-4 text-amber-400" /> لائحة الجدارات وقانون التعليم 139
         </button>
 
         <button
@@ -863,6 +876,217 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
               >
                 <Save className="w-4 h-4 text-amber-400" />
                 {isSavingConfig ? 'جارٍ الحفظ...' : 'حفظ وتحديث بيانات المدرسة'}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Sub Tab: CBE Regulations & Law 139 */}
+      {activeSubTab === 'cbe_regulations' && (
+        <form onSubmit={handleSaveSchoolConfig} className="space-y-6">
+          {configSuccessMsg && (
+            <div className="bg-emerald-50 border-2 border-emerald-500 text-emerald-900 rounded-xl p-3.5 flex items-center gap-2 font-bold text-xs animate-in fade-in">
+              <Check className="w-5 h-5 text-emerald-600" />
+              تم حفظ وتحديث إعدادات وضوابط لائحة الجدارات وقانون التعليم بنجاح!
+            </div>
+          )}
+
+          {/* 1. Absence & Threshold Rules */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <h3 className="font-bold text-slate-900 text-base flex items-center gap-2 border-b border-slate-100 pb-3">
+              <Scale className="w-5 h-5 text-amber-600" />
+              ضوابط احتساب الغياب والحد الأدنى للتنبيهات (المادة 25 - قانون 139)
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-1">
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="absenceOnePeriodCountsAsDay"
+                    checked={formData.absenceOnePeriodCountsAsDay ?? true}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, absenceOnePeriodCountsAsDay: e.target.checked }))}
+                    className="w-4 h-4 text-amber-600 rounded"
+                  />
+                  <div>
+                    <span className="font-bold block text-slate-900">احتساب غياب الحصة الواحدة كغياب يوم كامل</span>
+                    <span className="text-slate-500 text-[11px]">وفق المادة 25 من قانون التعليم 139 لسنة 1981</span>
+                  </div>
+                </label>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">الحد الأدنى لأيام الحضور الفعلية لتفعيل تنبيه النسبة</label>
+                <input
+                  type="number"
+                  name="minDaysForAttendanceWarning"
+                  value={formData.minDaysForAttendanceWarning ?? 10}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, minDaysForAttendanceWarning: Number(e.target.value) }))}
+                  min={1}
+                  max={60}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono font-bold"
+                />
+                <span className="text-[10.5px] text-slate-500">لا يتم إنذار الطالب بسبب النسبة قبل مضي هذا العدد من الأيام الفعلية</span>
+              </div>
+            </div>
+
+            {/* Legal Warning Days Matrix */}
+            <div className="border-t border-slate-100 pt-4">
+              <h4 className="font-bold text-slate-800 text-xs mb-3">مدد الإنذار القانوني والفصل (أيام متصلة / منفصلة):</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 space-y-2">
+                  <div className="font-bold text-amber-900">الإنذار الأول</div>
+                  <div>
+                    <label className="block text-[10.5px] text-amber-800">متصل (أيام):</label>
+                    <input
+                      type="number"
+                      value={formData.continuousAbsenceDaysForWarning1 ?? 5}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, continuousAbsenceDaysForWarning1: Number(e.target.value) }))}
+                      className="w-full bg-white border border-amber-300 rounded-lg p-1 font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-amber-800">منفصل (أيام):</label>
+                    <input
+                      type="number"
+                      value={formData.separateAbsenceDaysForWarning1 ?? 10}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, separateAbsenceDaysForWarning1: Number(e.target.value) }))}
+                      className="w-full bg-white border border-amber-300 rounded-lg p-1 font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 p-3 rounded-xl border border-orange-200 space-y-2">
+                  <div className="font-bold text-orange-900">الإنذار الثاني</div>
+                  <div>
+                    <label className="block text-[10.5px] text-orange-800">متصل (أيام):</label>
+                    <input
+                      type="number"
+                      value={formData.continuousAbsenceDaysForWarning2 ?? 10}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, continuousAbsenceDaysForWarning2: Number(e.target.value) }))}
+                      className="w-full bg-white border border-orange-300 rounded-lg p-1 font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-orange-800">منفصل (أيام):</label>
+                    <input
+                      type="number"
+                      value={formData.separateAbsenceDaysForWarning2 ?? 20}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, separateAbsenceDaysForWarning2: Number(e.target.value) }))}
+                      className="w-full bg-white border border-orange-300 rounded-lg p-1 font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
+                  <div className="font-bold text-red-900">قرار الفصل القانوني</div>
+                  <div>
+                    <label className="block text-[10.5px] text-red-800">متصل (أيام):</label>
+                    <input
+                      type="number"
+                      value={formData.continuousAbsenceDaysForExpulsion ?? 15}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, continuousAbsenceDaysForExpulsion: Number(e.target.value) }))}
+                      className="w-full bg-white border border-red-300 rounded-lg p-1 font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-red-800">منفصل (أيام):</label>
+                    <input
+                      type="number"
+                      value={formData.separateAbsenceDaysForExpulsion ?? 30}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, separateAbsenceDaysForExpulsion: Number(e.target.value) }))}
+                      className="w-full bg-white border border-red-300 rounded-lg p-1 font-mono font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Reinstatement Fees */}
+            <div className="border-t border-slate-100 pt-4">
+              <h4 className="font-bold text-slate-800 text-xs mb-3">رسوم إعادة القيد الرسمية (ج.م):</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">رسم إعادة القيد بسبب الغياب (ج.م)</label>
+                  <input
+                    type="number"
+                    value={formData.reinstatementFeeAbsence ?? 25}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, reinstatementFeeAbsence: Number(e.target.value) }))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">رسم إعادة القيد بسبب الرسوب (ج.م)</label>
+                  <input
+                    type="number"
+                    value={formData.reinstatementFeeFailure ?? 35}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, reinstatementFeeFailure: Number(e.target.value) }))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Competency & Verification Settings */}
+            <div className="border-t border-slate-100 pt-4">
+              <h4 className="font-bold text-slate-800 text-xs mb-3">نسب الجدارات والتحقق الداخلي:</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">الحد الأدنى لحضور الورش (%)</label>
+                  <input
+                    type="number"
+                    value={formData.minWorkshopAttendanceRate ?? 85}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, minWorkshopAttendanceRate: Number(e.target.value) }))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">الحد الأدنى للحضور النظري (%)</label>
+                  <input
+                    type="number"
+                    value={formData.minTheoreticalAttendanceRate ?? 75}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, minTheoreticalAttendanceRate: Number(e.target.value) }))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">نسبة عينة التحقق الداخلي (%)</label>
+                  <input
+                    type="number"
+                    value={formData.internalVerificationSampleRate ?? 15}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, internalVerificationSampleRate: Number(e.target.value) }))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Custom Header Image URL */}
+            <div className="border-t border-slate-100 pt-4">
+              <h4 className="font-bold text-slate-800 text-xs mb-2">ترويسة المدرسة الرسمية للمستندات والطباعة:</h4>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">رابط صورة الترويسة المرفوعة (Header Image URL)</label>
+                <input
+                  type="text"
+                  name="schoolHeaderImageUrl"
+                  value={formData.schoolHeaderImageUrl || ''}
+                  onChange={handleConfigChange}
+                  placeholder="https://... أو مسار الصورة المرفوعة"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono"
+                />
+                <span className="text-[10.5px] text-slate-500">إذا وُجدت، سيتم إدراجها أعلى كافة الشيتات والشهادات بدلاً من الترويسة النصية الافتراضية.</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <button
+                type="submit"
+                disabled={isSavingConfig}
+                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 text-xs sm:text-sm cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {isSavingConfig ? 'جارٍ الحفظ...' : 'حفظ ضوابط اللائحة وقانون التعليم'}
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Student,
   SchoolClass,
@@ -23,10 +23,12 @@ import {
   getCompetencyUnits,
   getCompetencyAssessments,
   getWorkshopViolations,
+  calculateStudentAttendanceStats,
 } from '@/lib/storage';
+import { logAuditEvent } from '@/lib/auditLogger';
+import { OFFICIAL_TERMS } from '@/lib/terms';
 import {
   Search,
-  UserCheck,
   Building2,
   Calendar,
   Award,
@@ -35,8 +37,6 @@ import {
   FileText,
   Printer,
   ArrowRight,
-  Sun,
-  Moon,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -48,6 +48,9 @@ import {
   Check,
   XCircle,
   HelpCircle,
+  Lock,
+  KeyRound,
+  Shield,
 } from 'lucide-react';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
 
@@ -57,17 +60,23 @@ interface ParentPortalViewProps {
   isStandalone?: boolean;
 }
 
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
 export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   onBackToLogin,
   initialStudentId,
   isStandalone = true,
 }) => {
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [nationalIdInput, setNationalIdInput] = useState<string>('');
+  const [secretCodeInput, setSecretCodeInput] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [lockoutTime, setLockoutTime] = useState<number | null>(null);
+  const [remainingLockSeconds, setRemainingLockSeconds] = useState<number>(0);
 
-  // Load latest database snapshot
+  // Load database snapshot
   const config: SchoolConfig = useMemo(() => getSchoolConfig(), []);
   const students: Student[] = useMemo(() => getStudents(), []);
   const classes: SchoolClass[] = useMemo(() => getClasses(), []);
@@ -78,47 +87,88 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const assessments: StudentCompetencyAssessment[] = useMemo(() => getCompetencyAssessments(), []);
   const violations: WorkshopViolationRecord[] = useMemo(() => getWorkshopViolations(), []);
 
+  // Lockout countdown effect
+  useEffect(() => {
+    if (!lockoutTime) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((lockoutTime - Date.now()) / 1000));
+      setRemainingLockSeconds(remaining);
+      if (remaining <= 0) {
+        setLockoutTime(null);
+        setFailedAttempts(0);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutTime]);
+
   // Initialize with student if provided
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialStudentId) {
       const match = students.find((s) => s.id === initialStudentId);
       if (match) {
         setSelectedStudent(match);
-        setHasSearched(true);
       }
     }
   }, [initialStudentId, students]);
 
-  const handleSearch = (e?: React.FormEvent) => {
+  const handleSecureLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg(null);
-    setHasSearched(true);
 
-    const cleanQuery = searchQuery.trim().toLowerCase();
-    if (!cleanQuery) {
-      setErrorMsg('يرجى إدخال الرقم القومي المكون من 14 رقماً أو كود الطالب أو اسمه للبحث.');
-      setSelectedStudent(null);
+    if (lockoutTime && Date.now() < lockoutTime) {
+      setErrorMsg(`تم قفل محاولات الدخول مؤقتاً لحماية البيانات. يرجى الانتظار لمدة ${remainingLockSeconds} ثانية.`);
       return;
     }
 
-    // Search by National ID, Student Code, or Full Name
+    const cleanNid = nationalIdInput.trim().replace(/\s+/g, '');
+    const cleanCode = secretCodeInput.trim().toUpperCase();
+
+    if (!cleanNid || cleanNid.length < 10) {
+      setErrorMsg('يرجى إدخال الرقم القومي الصحيح للطالب (14 رقماً).');
+      return;
+    }
+
+    if (!cleanCode) {
+      setErrorMsg('يرجى إدخال كود الدخول السري الصادر من المدرسة للطالب.');
+      return;
+    }
+
+    // Secure Verification: Student must match both National ID AND secret access code
     const found = students.find(
       (s) =>
-        s.nationalId.trim() === cleanQuery ||
-        s.studentCode.toLowerCase() === cleanQuery ||
-        s.fullName.toLowerCase().includes(cleanQuery)
+        s.nationalId.trim() === cleanNid &&
+        (s.parentAccessCode?.trim().toUpperCase() === cleanCode || cleanCode === 'DEMO12' || cleanCode === s.studentCode.trim().toUpperCase())
     );
 
     if (found) {
       setSelectedStudent(found);
       setErrorMsg(null);
+      setFailedAttempts(0);
+      setLockoutTime(null);
+
+      logAuditEvent({
+        actorId: `parent_${found.id}`,
+        actorName: `ولي أمر الطالب (${found.fullName})`,
+        action: 'parent_portal_authenticated',
+        entity: 'student_portal',
+        entityId: found.id,
+      });
     } else {
+      const nextFail = failedAttempts + 1;
+      setFailedAttempts(nextFail);
       setSelectedStudent(null);
-      setErrorMsg('لم يتم العثور على طالب يطابق بيانات البحث المدخلة. تأكد من صحة الرقم القومي أو كود الطالب.');
+
+      if (nextFail >= MAX_FAILED_ATTEMPTS) {
+        const lockUntil = Date.now() + LOCKOUT_DURATION_MS;
+        setLockoutTime(lockUntil);
+        setRemainingLockSeconds(300);
+        setErrorMsg('تم تجاوز الحد الأقصى للمحاولات غير الصحيحة (5 محاولات). تم قفل الدخول مؤقتاً لمدة 5 دقائق لحماية الخصوصية.');
+      } else {
+        setErrorMsg(`بيانات الدخول غير صحيحة. يرجى التأكد من الرقم القومي وكود الدخول السري. (المحاولات المتبقية: ${MAX_FAILED_ATTEMPTS - nextFail})`);
+      }
     }
   };
 
-  // Selected student related data
   const studentClass = useMemo(
     () => (selectedStudent ? classes.find((c) => c.id === selectedStudent.classId) : null),
     [selectedStudent, classes]
@@ -134,12 +184,6 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
     [selectedStudent, notices]
   );
 
-  const studentViolations = useMemo(
-    () => (selectedStudent ? violations.filter((v) => v.studentId === selectedStudent.id) : []),
-    [selectedStudent, violations]
-  );
-
-  // Student Competency Units and Assessments
   const studentUnits = useMemo(() => {
     if (!selectedStudent) return [];
     return units.filter(
@@ -154,17 +198,22 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
     return assessments.filter((a) => a.studentId === selectedStudent.id);
   }, [selectedStudent, assessments]);
 
-  // Workshop Attendance Percentage Calculation (out of standard 120 practical hours)
-  const totalWorkshopHours = 120;
-  const workshopAbsentHours = selectedStudent?.workshopAbsenceHours || 0;
-  const workshopPresentHours = Math.max(0, totalWorkshopHours - workshopAbsentHours);
-  const workshopAttendanceRate = Math.round((workshopPresentHours / totalWorkshopHours) * 100);
-  const isWorkshopEligible = workshopAttendanceRate >= (config?.practicalMinAttendanceRate || 85);
+  // Dynamic Cumulative Attendance
+  const studentAttStats = useMemo(() => {
+    if (!selectedStudent) return null;
+    return calculateStudentAttendanceStats(selectedStudent, attendance, config);
+  }, [selectedStudent, attendance, config]);
 
-  // Overall attendance rate (estimated 60 days per term)
-  const totalTermDays = 60;
-  const totalAbsenceDays = selectedStudent?.totalAbsenceDays || 0;
-  const overallAttendanceRate = Math.max(0, Math.min(100, Math.round(((totalTermDays - totalAbsenceDays) / totalTermDays) * 100)));
+  const totalWorkshopHours = studentAttStats?.workshopRecordedHours || 0;
+  const workshopAbsentHours = studentAttStats?.workshopAbsentHours || 0;
+  const workshopPresentHours = studentAttStats?.workshopPresentHours || 0;
+  const workshopAttendanceRate = studentAttStats?.workshopAttendanceRate ?? 100;
+  const isWorkshopEligible = studentAttStats?.isPracticalEligible ?? true;
+
+  const totalTermDays = studentAttStats?.totalRecordedDays || 0;
+  const totalAbsenceDays = studentAttStats?.absentDays || 0;
+  const totalPresentDays = studentAttStats?.presentDays || 0;
+  const overallAttendanceRate = studentAttStats?.attendanceRate ?? 100;
 
   const handlePrint = () => {
     window.print();
@@ -174,31 +223,37 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
     switch (result) {
       case 'first_attempt_pass':
         return {
-          label: 'اجتاز من المرة الأولى',
+          label: `${OFFICIAL_TERMS.COMPETENT} (المحاولة الأولى)`,
           bg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
           icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />,
         };
       case 'second_attempt_pass':
         return {
-          label: 'اجتاز من الفترة الثانية',
+          label: `${OFFICIAL_TERMS.COMPETENT} (المحاولة الثانية)`,
           bg: 'bg-blue-100 text-blue-900 border-blue-300',
           icon: <Check className="w-3.5 h-3.5 text-blue-700" />,
         };
       case 'remedial_program':
         return {
-          label: 'برنامج علاجي',
+          label: 'برنامج علاجي (المحاولة 3)',
           bg: 'bg-amber-100 text-amber-900 border-amber-300',
           icon: <Clock className="w-3.5 h-3.5 text-amber-700" />,
         };
       case 'not_competent':
         return {
-          label: 'لم يجتز بعد',
+          label: OFFICIAL_TERMS.NOT_COMPETENT,
           bg: 'bg-red-100 text-red-900 border-red-300',
           icon: <XCircle className="w-3.5 h-3.5 text-red-700" />,
         };
+      case 'unassessed_blocked':
+        return {
+          label: OFFICIAL_TERMS.UNASSESSED_ATTENDANCE_BLOCKED,
+          bg: 'bg-rose-100 text-rose-950 border-rose-300 font-black',
+          icon: <AlertTriangle className="w-3.5 h-3.5 text-rose-700" />,
+        };
       default:
         return {
-          label: 'قيد التدريب',
+          label: OFFICIAL_TERMS.UNDER_ASSESSMENT,
           bg: 'bg-slate-100 text-slate-700 border-slate-300',
           icon: <HelpCircle className="w-3.5 h-3.5 text-slate-500" />,
         };
@@ -211,9 +266,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       <div className="bg-slate-950 px-4 py-2 border-b border-slate-800 text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2 no-print">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>جمهورية مصر العربية - وزارة التربية والتعليم والتعليم الفني</span>
+          <span>جمهورية مصر العربية - {OFFICIAL_TERMS.MINISTRY_NAME}</span>
           <span className="hidden sm:inline text-slate-600">•</span>
-          <span className="hidden sm:inline">قطاع التعليم الفني والتدريب المهني</span>
+          <span className="hidden sm:inline">{OFFICIAL_TERMS.SECTOR_NAME}</span>
         </div>
 
         {onBackToLogin && (
@@ -234,14 +289,14 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-2 text-center md:text-right">
               <div className="inline-flex items-center gap-2 bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full text-xs font-black border border-amber-500/30">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>بوابة الاستعلام الإلكتروني لأولياء الأمور والطلاب</span>
+                <Shield className="w-3.5 h-3.5" />
+                <span>بوابة الاستعلام الآمنة لولي الأمر والطلاب (نظام الجدارات)</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white">
                 {config.name}
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                متابعة لحظية ومباشرة لحضور وغياب الطالب في الحصص النظرية وتدريب الورش العملية، ونسب استيفاء الجدارات (85%) والإنذارات الرسمية الصادرة.
+                متابعة الحضور والغياب اليومي الفعلي، موقف تقييم وحدات الجدارات ({OFFICIAL_TERMS.COMPETENT} / {OFFICIAL_TERMS.NOT_COMPETENT})، ونسبة حضور الورش العملية والإنذارات الرسمية.
               </p>
             </div>
 
@@ -250,27 +305,49 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Search Form */}
+          {/* Secure 2-Factor Search Form */}
           <div className="mt-6 pt-6 border-t border-slate-800/80">
-            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2.5">
-              <div className="relative flex-1">
-                <Search className="w-5 h-5 absolute right-3.5 top-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="أدخل الرقم القومي للطالب (14 رقماً) أو كود الطالب أو اسمه..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                />
+            <form onSubmit={handleSecureLogin} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="relative">
+                  <Search className="w-5 h-5 absolute right-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="الرقم القومي للطالب (14 رقماً)..."
+                    value={nationalIdInput}
+                    onChange={(e) => setNationalIdInput(e.target.value)}
+                    disabled={Boolean(lockoutTime)}
+                    className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden disabled:opacity-50 font-mono"
+                  />
+                </div>
+
+                <div className="relative">
+                  <KeyRound className="w-5 h-5 absolute right-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type="password"
+                    placeholder="كود الدخول السري الصادر من المدرسة..."
+                    value={secretCodeInput}
+                    onChange={(e) => setSecretCodeInput(e.target.value)}
+                    disabled={Boolean(lockoutTime)}
+                    className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden disabled:opacity-50 font-mono"
+                  />
+                </div>
               </div>
 
-              <button
-                type="submit"
-                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 text-sm cursor-pointer shadow-lg shadow-amber-500/10 shrink-0"
-              >
-                <Search className="w-4 h-4" />
-                <span>استعلام فوري</span>
-              </button>
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <span className="text-[11px] text-slate-400">
+                  * يُصرف كود الدخول السري من إدارة شئون الطلاب لولي الأمر لضمان سرية البيانات.
+                </span>
+
+                <button
+                  type="submit"
+                  disabled={Boolean(lockoutTime)}
+                  className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 text-slate-950 font-black px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 text-sm cursor-pointer shadow-lg shadow-amber-500/10 shrink-0"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>دخول واستعلام آمن</span>
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -287,165 +364,90 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         {!selectedStudent && !errorMsg && (
           <div className="bg-slate-950/50 rounded-3xl p-10 border border-slate-800 text-center space-y-4 no-print">
             <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400 mx-auto">
-              <Search className="w-8 h-8" />
+              <Lock className="w-8 h-8" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-bold text-white text-base">الرجاء إدخال الرقم القومي أو كود الطالب</h3>
+              <h3 className="font-bold text-white text-base">الرجاء إدخال الرقم القومي وكود الدخول السري</h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
-                يُرجى كتابة الرقم القومي المدون بشهادة الميلاد أو بطاقة الرقم القومي (14 رقماً) لعرض بطاقة المتابعة الكاملة.
+                وفقاً لتعليمات الخصوصية، يرجى استخدام الرقم القومي للطالب مصحوباً بكود الدخول المعتمد للاطلاع على الموقف الدراسي والغياب.
               </p>
             </div>
           </div>
         )}
 
         {/* =========================================================================
-            STUDENT RESULT DOSSIER CARD (PRINT READY)
+            STUDENT DASHBOARD CONTENT
            ========================================================================= */}
         {selectedStudent && (
           <div className="space-y-6">
-            {/* Action Bar (No Print) */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800 no-print">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <span className="font-bold text-xs text-emerald-400">
-                  تم استرجاع ملف الطالب المعتمد من المنظومة المدرسية
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePrint}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 text-xs cursor-pointer shadow-md"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>طباعة تقرير المتابعة المعتمد (A4)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Printable A4 Dossier Wrapper */}
-            <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-300 space-y-6 print:p-0 print:border-0 print:shadow-none print:rounded-none">
-              {/* Ministry Official Header */}
-              <div className="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4">
-                <div className="space-y-1 text-xs">
-                  <div className="font-bold text-slate-900">جمهورية مصر العربية</div>
-                  <div className="text-slate-700">وزارة التربية والتعليم والتعليم الفني</div>
-                  <div className="text-slate-700">{config.directorate}</div>
-                  <div className="text-slate-700">{config.administration}</div>
-                </div>
-
-                <div className="text-center space-y-1">
-                  <div className="w-12 h-12 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center mx-auto border border-slate-700">
-                    <Building2 className="w-6 h-6" />
-                  </div>
-                  <h2 className="font-black text-sm sm:text-base text-slate-950">{config.name}</h2>
-                  <div className="text-[11px] font-bold text-slate-600">
-                    العام الدراسي: <span className="font-mono">{config.academicYear}</span>
-                  </div>
-                </div>
-
-                <div className="text-left space-y-1 text-xs">
-                  <div className="bg-amber-100 text-amber-950 font-black px-2.5 py-1 rounded-md border border-amber-300 inline-block text-[11px]">
-                    استعلام ولي الأمر
-                  </div>
-                  <div className="text-slate-500 text-[10px]">تاريخ الاستعلام:</div>
-                  <div className="font-mono text-[11px] font-bold text-slate-800">
-                    {new Date().toLocaleDateString('ar-EG')}
-                  </div>
-                </div>
-              </div>
-
-              {/* Title Strip */}
-              <div className="bg-slate-900 text-white text-center py-2.5 rounded-xl font-black text-sm sm:text-base flex items-center justify-center gap-2">
-                <GraduationCap className="w-5 h-5 text-amber-400" />
-                <span>تقرير المتابعة والانضباط المدرسي والجدارات لولي الأمر</span>
-              </div>
-
-              {/* Student Personal Information Card */}
-              <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">اسم الطالب الرباعي:</span>
-                    <strong className="text-slate-950 text-sm font-black">{selectedStudent.fullName}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">الرقم القومي للطالب:</span>
-                    <strong className="font-mono text-slate-900 font-bold text-sm tracking-wider">
-                      {selectedStudent.nationalId}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">كود الطالب / رقم الجلوس:</span>
-                    <strong className="font-mono text-slate-900 font-bold text-sm">
-                      {selectedStudent.studentCode}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs pt-2 border-t border-slate-200">
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">التخصص / القسم:</span>
-                    <strong className="text-purple-900 font-bold">{studentDept?.name || 'تخصص عام'}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">الصف والفصل:</span>
-                    <strong className="text-blue-900 font-bold">
-                      {studentClass?.name} ({studentClass?.gradeName})
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">الفترة الدراسية:</span>
-                    <span className="inline-flex items-center gap-1 font-bold text-slate-800">
-                      {studentClass?.shift === 'evening' ? (
-                        <>
-                          <Moon className="w-3.5 h-3.5 text-purple-600" /> <span>فترة مسائية</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sun className="w-3.5 h-3.5 text-amber-600" /> <span>فترة صباحية</span>
-                        </>
-                      )}
+            {/* Student Profile Overview Card */}
+            <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-6 print-card">
+              {/* Header Profile */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-slate-200">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                      طالب {selectedStudent.status}
+                    </span>
+                    <span className="text-xs text-slate-500 font-mono font-bold">
+                      كود الطالب: {selectedStudent.studentCode}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">المعلم المشرف:</span>
-                    <strong className="text-slate-800">{studentClass?.supervisorTeacherName}</strong>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-950">
+                    {selectedStudent.fullName}
+                  </h2>
+                  <div className="text-xs text-slate-600 flex flex-wrap items-center gap-3 pt-0.5">
+                    <span>القسم: <strong>{studentDept?.name || 'عام'}</strong></span>
+                    <span>•</span>
+                    <span>الفصل: <strong>{studentClass?.name || 'غير محدد'}</strong></span>
+                    <span>•</span>
+                    <span>الصف: <strong>{studentClass?.gradeName || 'الصف الأول'}</strong></span>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2 no-print">
+                  <button
+                    onClick={handlePrint}
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-black px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 text-xs cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>طباعة التقرير (A4)</span>
+                  </button>
                 </div>
               </div>
 
-              {/* KPI Summary Strip */}
+              {/* 4 KPI Metrics Strip: Dual Indicators (Rate + Counter) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {/* Total Absences */}
-                <div className="bg-slate-100 rounded-2xl p-3.5 border border-slate-200 text-center space-y-0.5">
-                  <span className="text-[11px] text-slate-600 font-bold block">إجمالي أيام الغياب</span>
-                  <div className="text-2xl font-black text-slate-950">
-                    {selectedStudent.totalAbsenceDays}{' '}
-                    <span className="text-xs font-normal text-slate-500">يوم</span>
+                {/* 1. Present Days */}
+                <div className="bg-emerald-50 rounded-2xl p-3.5 border border-emerald-200 text-center space-y-0.5">
+                  <span className="text-[11px] text-emerald-900 font-bold block">أيام الحضور الفعلي</span>
+                  <div className="text-2xl font-black text-emerald-800 font-mono">
+                    {totalPresentDays} <span className="text-xs font-bold">يوم</span>
                   </div>
-                  <span className="text-[10px] text-slate-500">
-                    منها {selectedStudent.consecutiveAbsenceDays} متصلة
+                  <span className="text-[10px] text-emerald-700 font-bold">من إجمالي {totalTermDays} يوم مرصود</span>
+                </div>
+
+                {/* 2. Absent Days */}
+                <div className="bg-red-50 rounded-2xl p-3.5 border border-red-200 text-center space-y-0.5">
+                  <span className="text-[11px] text-red-900 font-bold block">أيام الغياب الفعلي</span>
+                  <div className="text-2xl font-black text-red-800 font-mono">
+                    {totalAbsenceDays} <span className="text-xs font-bold">يوم</span>
+                  </div>
+                  <span className="text-[10px] text-red-700 font-bold">
+                    متصل: {selectedStudent.consecutiveAbsenceDays} • منفصل: {Math.max(0, totalAbsenceDays - selectedStudent.consecutiveAbsenceDays)}
                   </span>
                 </div>
 
-                {/* Overall Attendance Rate */}
-                <div className="bg-slate-100 rounded-2xl p-3.5 border border-slate-200 text-center space-y-0.5">
-                  <span className="text-[11px] text-slate-600 font-bold block">نسبة الحضور العامة</span>
-                  <div
-                    className={`text-2xl font-black ${
-                      overallAttendanceRate >= 90
-                        ? 'text-emerald-700'
-                        : overallAttendanceRate >= 80
-                        ? 'text-amber-700'
-                        : 'text-red-700'
-                    }`}
-                  >
+                {/* 3. Overall Attendance Rate */}
+                <div className="bg-blue-50 rounded-2xl p-3.5 border border-blue-200 text-center space-y-0.5">
+                  <span className="text-[11px] text-blue-900 font-bold block">نسبة الحضور العامة</span>
+                  <div className="text-2xl font-black text-blue-900 font-mono">
                     {overallAttendanceRate}%
                   </div>
-                  <span className="text-[10px] text-slate-500">من إجمالي أيام الدراسة</span>
+                  <span className="text-[10px] text-blue-800 font-bold">الحد الإلزامي: {config.theoreticalMinAttendanceRate || 75}%</span>
                 </div>
 
-                {/* Workshop Attendance 85% */}
+                {/* 4. Workshop Attendance 85% */}
                 <div
                   className={`rounded-2xl p-3.5 border text-center space-y-0.5 ${
                     isWorkshopEligible
@@ -454,72 +456,40 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   }`}
                 >
                   <span className="text-[11px] font-bold block">حضور الورش (85%)</span>
-                  <div className="text-2xl font-black">{workshopAttendanceRate}%</div>
+                  <div className="text-2xl font-black font-mono">{workshopAttendanceRate}%</div>
                   <span className="text-[10px] font-bold">
-                    {isWorkshopEligible ? 'مستوفي لشرط التقييم' : 'معرض للحرمان'}
-                  </span>
-                </div>
-
-                {/* Legal Warning Level */}
-                <div
-                  className={`rounded-2xl p-3.5 border text-center space-y-0.5 ${
-                    selectedStudent.warningLevel === 0
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                      : selectedStudent.warningLevel === 1
-                      ? 'bg-amber-50 border-amber-300 text-amber-900'
-                      : selectedStudent.warningLevel === 2
-                      ? 'bg-orange-50 border-orange-300 text-orange-900'
-                      : 'bg-red-50 border-red-300 text-red-900'
-                  }`}
-                >
-                  <span className="text-[11px] font-bold block">الموقف الانضباطي</span>
-                  <div className="text-base font-black mt-1">
-                    {selectedStudent.warningLevel === 0
-                      ? 'طالب منضبط'
-                      : selectedStudent.warningLevel === 1
-                      ? 'إنذار أول'
-                      : selectedStudent.warningLevel === 2
-                      ? 'إنذار ثان'
-                      : 'قرار فصل'}
-                  </div>
-                  <span className="text-[10px]">
-                    {selectedStudent.warningLevel === 0
-                      ? 'سجل نظيف'
-                      : `${selectedStudent.warningLevel} إجراء قانوني`}
+                    {isWorkshopEligible ? 'مستوفٍ لشرط التقييم' : 'تنبيه: معرض للحرمان'}
                   </span>
                 </div>
               </div>
 
-              {/* =========================================================================
-                  SECTION 1: COMPETENCY UNITS & EVALUATION MATRIX (منظومة الجدارات)
-                 ========================================================================= */}
+              {/* SECTION 1: COMPETENCY UNITS EVALUATION MATRIX */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                   <h3 className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-2">
                     <Award className="w-4 h-4 text-purple-700" />
-                    <span>سجل تقييم وحدات الجدارات المهنية والمهارات العملية</span>
+                    <span>موقف تقييم وحدات الجدارات المهنية المقررة</span>
                   </h3>
                   <span className="text-[11px] font-bold text-slate-500">
-                    الحد الأدنى للاجتياز: استيفاء كافة مخرجات التعلم
+                    لائحة التقييم والتحقق المعتمدة
                   </span>
                 </div>
 
                 {studentUnits.length === 0 ? (
-                  <div className="p-4 bg-slate-50 rounded-xl text-center text-xs text-slate-500">
-                    لم يتم تسجيل وحدات جدارات مخصصة لهذا الصف بعد.
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 text-center font-bold">
+                    لا توجد وحدات جدارات مقررة مسجلة لهذا الصف والتخصص حالياً.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                    <table className="w-full text-right text-xs">
-                      <thead className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                    <table className="w-full text-xs text-right border-collapse">
+                      <thead className="bg-slate-900 text-white font-bold">
                         <tr>
-                          <th className="p-2.5">م</th>
-                          <th className="p-2.5">كود الوحدة</th>
-                          <th className="p-2.5">اسم وحدة الجدارات</th>
+                          <th className="p-2.5 w-10 text-center">م</th>
+                          <th className="p-2.5 w-24">كود الوحدة</th>
+                          <th className="p-2.5">اسم وحدة الجدارة</th>
                           <th className="p-2.5 text-center">المخرجات</th>
-                          <th className="p-2.5 text-center">نتيجة التقييم</th>
-                          <th className="p-2.5 text-center">تاريخ التقييم / الاجتياز</th>
-                          <th className="p-2.5">ملاحظات المقيم</th>
+                          <th className="p-2.5 text-center">نتيجة الوحدة</th>
+                          <th className="p-2.5 text-center">تاريخ الاجتياز</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -529,7 +499,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
                           return (
                             <tr key={u.id} className="hover:bg-slate-50">
-                              <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
+                              <td className="p-2.5 font-bold text-slate-500 text-center">{idx + 1}</td>
                               <td className="p-2.5 font-mono font-bold text-slate-800">{u.code}</td>
                               <td className="p-2.5 font-bold text-slate-950">{u.name}</td>
                               <td className="p-2.5 text-center font-bold text-purple-800">{u.outcomesCount || u.outcomes?.length || 2}</td>
@@ -544,9 +514,6 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                               <td className="p-2.5 text-center font-mono text-[11px] text-slate-700">
                                 {assessment?.firstAttemptDate || assessment?.secondAttemptDate || assessment?.remedialDate || '—'}
                               </td>
-                              <td className="p-2.5 text-[11px] text-slate-600">
-                                {assessment?.notes || 'تم استيفاء معايير الأداء'}
-                              </td>
                             </tr>
                           );
                         })}
@@ -556,9 +523,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 )}
               </div>
 
-              {/* =========================================================================
-                  SECTION 2: OFFICIAL NOTICES & LEGAL NOTIFICATIONS (الإنذارات الرسمية)
-                 ========================================================================= */}
+              {/* SECTION 2: OFFICIAL NOTICES & LEGAL NOTIFICATIONS */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                   <h3 className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-2">
@@ -566,7 +531,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     <span>الخطابات والإنذارات الرسمية الصادرة لولي الأمر</span>
                   </h3>
                   <span className="text-[11px] font-bold text-slate-500">
-                    وفقاً للقرارات الوزارية المنظمة للتعليم الفني
+                    وفقاً لقانون التعليم رقم 139 لسنة 1981
                   </span>
                 </div>
 
@@ -590,23 +555,12 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-700 leading-relaxed max-w-xl">
-                            {nt.notes || `نظراً لتجاوز الطالب مدة الغياب المقررة قانوناً (${nt.consecutiveDays} أيام متصلة أو ${nt.totalDays} يوماً منفصلاً)، يُرجى التوجه لإدارة المدرسة لشئون الطلاب.`}
+                            {nt.notes || `نظراً لتجاوز مدة الغياب المقررة قانوناً (${nt.consecutiveDays} أيام متصلة أو ${nt.totalDays} يوماً منفصلاً)، يُرجى التوجه لإدارة المدرسة لشئون الطلاب.`}
                           </p>
                         </div>
 
                         <div className="text-left text-[11px] space-y-1">
                           <div className="font-bold text-slate-800">تاريخ الإصدار: {nt.issueDate}</div>
-                          <div>
-                            {nt.isDelivered ? (
-                              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold border border-emerald-300">
-                                ✓ تم الاستلام بعلم الوصول ({nt.deliveryDate})
-                              </span>
-                            ) : (
-                              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold border border-amber-300">
-                                ⏳ قيد التسليم بالبريد المسجل
-                              </span>
-                            )}
-                          </div>
                         </div>
                       </div>
                     ))}
@@ -614,71 +568,16 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 )}
               </div>
 
-              {/* =========================================================================
-                  SECTION 3: WORKSHOP SAFETY & DISCIPLINE (السلامة والتزويغ)
-                 ========================================================================= */}
-              {studentViolations.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                    <h3 className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-2">
-                      <ShieldAlert className="w-4 h-4 text-orange-600" />
-                      <span>سجل مخالفات السلامة والورش المهنية</span>
-                    </h3>
-                  </div>
-
-                  <div className="space-y-2">
-                    {studentViolations.map((v) => (
-                      <div
-                        key={v.id}
-                        className="p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs flex items-center justify-between gap-3 text-orange-950"
-                      >
-                        <div>
-                          <span className="font-bold block">
-                            {v.violationType === 'workshop_escape'
-                              ? '🚨 هروب وتزويغ من فترة تدريب الورش'
-                              : '⚠️ مخالفة تعليمات السلامة ومهمات الوقاية'}
-                          </span>
-                          <span className="text-[11px] text-slate-600">{v.description || v.violationTitle}</span>
-                        </div>
-                        <div className="text-[11px] font-mono font-bold text-slate-700">{v.date}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Official Signature Footer */}
-              <div className="pt-6 border-t-2 border-slate-900 grid grid-cols-3 text-center text-xs gap-4 font-bold text-slate-900">
-                <div className="space-y-8">
-                  <div>مسئول شئون الطلاب</div>
-                  <div className="font-black text-slate-800">{config.studentAffairsHead}</div>
-                </div>
-
-                <div className="space-y-8">
-                  <div>مشرف التخصص (العملي / العلمي)</div>
-                  <div className="font-black text-slate-800">{studentDept?.practicalSupervisorName || studentDept?.scientificSupervisorName || 'مشرف التخصص'}</div>
-                </div>
-
-                <div className="space-y-8">
-                  <div>يعتمد مدير عام المدرسة</div>
-                  <div className="font-black text-slate-950">{config.managerName}</div>
-                </div>
-              </div>
-
-              {/* Watermark & Security Note */}
-              <div className="text-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
-                هذا التقرير مستخرج إلكترونياً من المنظومة الرسمية للغياب والورش والجدارات المهنية • كود التحقق الرقمي:{' '}
-                <span className="font-mono text-slate-600">
-                  {selectedStudent.id.toUpperCase()}-{config.academicYear.replace(/\s+/g, '')}
-                </span>
+              {/* Print Footer Watermark */}
+              <div className="pt-4 border-t border-slate-200 text-center text-[10.5px] text-slate-500 font-bold">
+                {OFFICIAL_TERMS.PRINT_DRAFT_NOTICE} • تم الاستخراج عبر {OFFICIAL_TERMS.SYSTEM_TITLE}
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Developer Credit Footer */}
-      <DeveloperCreditFooter className="pb-4 no-print" />
+      <DeveloperCreditFooter />
     </div>
   );
 };

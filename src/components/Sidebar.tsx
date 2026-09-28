@@ -83,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isOfficer = currentUser.role === 'affairs_officer';
   const isSocialWorker = currentUser.role === 'social_worker';
   const isDeptHead = currentUser.role === 'dept_head';
-  const isCompetencyOfficer = currentUser.role === 'competency_officer';
+  const isCompetencyOfficer = !!currentUser.isInternalVerifier;
   const isTeacher = currentUser.role === 'teacher';
   const isAffairs = isPrincipal || isDeputy || isOfficer;
 

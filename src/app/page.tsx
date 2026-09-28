@@ -169,7 +169,7 @@ export default function HomePage() {
       setActiveTab('attendance');
     } else if (user.role === 'dept_head') {
       setActiveTab('departments');
-    } else if (user.role === 'competency_officer') {
+    } else if (user.role === 'external_verifier' || !!user.isInternalVerifier) {
       setActiveTab('competencies');
     } else if (user.role === 'social_worker') {
       setActiveTab('social_portal');
@@ -204,7 +204,7 @@ export default function HomePage() {
       setActiveTab('attendance');
     } else if (portal === 'dept_head' || user.role === 'dept_head') {
       setActiveTab('departments');
-    } else if (portal === 'competencies' || user.role === 'competency_officer') {
+    } else if (portal === 'competencies' || !!user.isInternalVerifier) {
       setActiveTab('competencies');
     } else if (portal === 'social_worker' || user.role === 'social_worker') {
       setActiveTab('social_portal');
