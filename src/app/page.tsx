@@ -51,8 +51,17 @@ import { initOfflineSyncEngine } from '@/lib/offlineSyncEngine';
 import { PortalSelectionScreen } from '@/components/PortalSelectionScreen';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
 import { PortalType, SocialCaseRecord } from '@/types';
+import { ToastProvider } from '@/components/ui';
 
 export default function HomePage() {
+  return (
+    <ToastProvider>
+      <MainAppContent />
+    </ToastProvider>
+  );
+}
+
+function MainAppContent() {
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isParentPortalOpen, setIsParentPortalOpen] = useState<boolean>(false);

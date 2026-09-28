@@ -33,7 +33,13 @@ import {
   Flame,
   Info,
   Check,
+  LayoutGrid,
+  List,
+  Smartphone,
+  CheckCircle,
+  UserX,
 } from 'lucide-react';
+import { useToast, Button, Badge, Tabs } from '@/components/ui';
 
 interface TeacherAttendanceTakerProps {
   currentUser: User;
@@ -148,11 +154,23 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
   const [periodType, setPeriodType] = useState<PeriodType>('workshop');
   const [periodNumber, setPeriodNumber] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [attendanceViewMode, setAttendanceViewMode] = useState<'mobile_fast' | 'weekly_table'>('mobile_fast');
+  const [selectedMobileDate, setSelectedMobileDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [undoSnapshot, setUndoSnapshot] = useState<Record<string, Record<string, AttendanceStatus | undefined>> | null>(null);
 
   // Weekly Attendance Matrix: studentId -> (date -> AttendanceStatus | undefined)
   const [weeklyMatrix, setWeeklyMatrix] = useState<Record<string, Record<string, AttendanceStatus | undefined>>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
+  let toast: ReturnType<typeof useToast> | null = null;
+  try {
+    toast = useToast();
+  } catch {
+    // Graceful fallback if rendered outside ToastProvider
+  }
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
   const classStudents = useMemo(() => {
@@ -168,6 +186,17 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
 
   const startDateStr = weekDays[0]?.date || '';
   const endDateStr = weekDays[weekDays.length - 1]?.date || '';
+
+  // Ensure selectedMobileDate matches one of the weekDays
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const matchToday = weekDays.find((d) => d.date === today);
+    if (matchToday) {
+      setSelectedMobileDate(today);
+    } else if (weekDays[0]) {
+      setSelectedMobileDate(weekDays[0].date);
+    }
+  }, [weekDays]);
 
   // Initialize or load weekly attendance matrix when class or week changes
   useEffect(() => {
@@ -194,6 +223,15 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
     setWeeklyMatrix(initialMatrix);
     setSaveSuccessMsg(null);
   }, [selectedClassId, weekDays, periodType, periodNumber, students.length]);
+
+  // Handle Undo of bulk actions
+  const handleUndo = () => {
+    if (undoSnapshot) {
+      setWeeklyMatrix(undoSnapshot);
+      setUndoSnapshot(null);
+      toast?.info('تم التراجع عن الإجراء واستعادة السجل السابق بنجاح');
+    }
+  };
 
   // Cycle status on cell click: Empty -> P -> A -> E -> L -> Empty
   const handleCellClick = (studentId: string, date: string) => {
@@ -226,30 +264,9 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
     }));
   };
 
-  // Bulk actions
-  const handleSetAllPresent = () => {
-    const nextMatrix: Record<string, Record<string, AttendanceStatus | undefined>> = {};
-    classStudents.forEach((student) => {
-      nextMatrix[student.id] = {};
-      weekDays.forEach((day) => {
-        nextMatrix[student.id][day.date] = 'present';
-      });
-    });
-    setWeeklyMatrix(nextMatrix);
-  };
-
-  const handleClearAll = () => {
-    const nextMatrix: Record<string, Record<string, AttendanceStatus | undefined>> = {};
-    classStudents.forEach((student) => {
-      nextMatrix[student.id] = {};
-      weekDays.forEach((day) => {
-        nextMatrix[student.id][day.date] = undefined;
-      });
-    });
-    setWeeklyMatrix(nextMatrix);
-  };
-
-  const handleSetDayAllPresent = (date: string) => {
+  // 1-Click Fast Mobile Attendance: Mark All Students Present for Selected Day + Undo Toast
+  const handleFastMarkAllPresent = (date: string) => {
+    setUndoSnapshot(JSON.parse(JSON.stringify(weeklyMatrix)));
     setWeeklyMatrix((prev) => {
       const next = { ...prev };
       classStudents.forEach((student) => {
@@ -260,9 +277,50 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
       });
       return next;
     });
+
+    const activeDayInfo = weekDays.find((d) => d.date === date);
+    const dayLabel = activeDayInfo ? activeDayInfo.dayOfWeek : date;
+
+    toast?.success(
+      `تم تحديد جميع طلاب الفصل (${classStudents.length}) كـ حاضر ليوم ${dayLabel}`,
+      'يمكنك الآن استثناء الطلاب الغائبين بالنقر على بطاقة كل طالب.',
+      handleUndo
+    );
+  };
+
+  // Bulk actions
+  const handleSetAllPresent = () => {
+    setUndoSnapshot(JSON.parse(JSON.stringify(weeklyMatrix)));
+    const nextMatrix: Record<string, Record<string, AttendanceStatus | undefined>> = {};
+    classStudents.forEach((student) => {
+      nextMatrix[student.id] = {};
+      weekDays.forEach((day) => {
+        nextMatrix[student.id][day.date] = 'present';
+      });
+    });
+    setWeeklyMatrix(nextMatrix);
+    toast?.success('تم تعيين الأسبوع كاملاً كـ حاضر لجميع الطلاب', undefined, handleUndo);
+  };
+
+  const handleClearAll = () => {
+    setUndoSnapshot(JSON.parse(JSON.stringify(weeklyMatrix)));
+    const nextMatrix: Record<string, Record<string, AttendanceStatus | undefined>> = {};
+    classStudents.forEach((student) => {
+      nextMatrix[student.id] = {};
+      weekDays.forEach((day) => {
+        nextMatrix[student.id][day.date] = undefined;
+      });
+    });
+    setWeeklyMatrix(nextMatrix);
+    toast?.info('تم تفريغ رصد الأسبوع كاملاً', undefined, handleUndo);
+  };
+
+  const handleSetDayAllPresent = (date: string) => {
+    handleFastMarkAllPresent(date);
   };
 
   const handleSetDayAllAbsent = (date: string) => {
+    setUndoSnapshot(JSON.parse(JSON.stringify(weeklyMatrix)));
     setWeeklyMatrix((prev) => {
       const next = { ...prev };
       classStudents.forEach((student) => {
@@ -273,6 +331,7 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
       });
       return next;
     });
+    toast?.warning('تم تعيين اليوم كـ غائب لجميع الطلاب', undefined, handleUndo);
   };
 
   const handleClearDay = (date: string) => {
@@ -984,55 +1043,334 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
           </div>
         </div>
 
-        {/* Legend Strip & Fast Guide */}
-        <div className="bg-slate-900 text-white rounded-2xl p-3.5 px-5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
-          <div className="flex items-center gap-6 flex-wrap font-bold">
-            <span className="text-slate-400 font-medium flex items-center gap-1.5">
-              <Info className="w-4 h-4 text-amber-400" /> دليل الرموز:
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white font-black flex items-center justify-center text-xs">P</span>
-              <span className="text-emerald-300 font-bold">حاضر (Present)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-red-600 text-white font-black flex items-center justify-center text-xs">A</span>
-              <span className="text-red-300 font-bold">غائب (Absent)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-xs">E</span>
-              <span className="text-blue-300 font-bold">استئذان / عذر (Excused)</span>
-            </div>
+        {/* View Mode Switcher */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setAttendanceViewMode('mobile_fast')}
+              className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition min-h-[44px] cursor-pointer ${
+                attendanceViewMode === 'mobile_fast'
+                  ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-500/40'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>وضع الموبايل السريع (تحضير بنقرة واحدة)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAttendanceViewMode('weekly_table')}
+              className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition min-h-[44px] cursor-pointer ${
+                attendanceViewMode === 'weekly_table'
+                  ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-500/40'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span>جدول الرصد الأسبوعي الكامل (A4 Grid)</span>
+            </button>
           </div>
 
-          <div className="text-amber-300/90 text-[11px] font-medium">
-            💡 انقر على أي خانة للتبديل السريع بين الحالات (P ➔ A ➔ E ➔ P)
+          <div className="text-xs text-slate-500 font-bold">
+            عدد طلاب الفصل: <strong className="text-slate-900">{classStudents.length} طالب</strong>
           </div>
         </div>
 
-        {/* Weekly Attendance Matrix Table */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Table Header Controls */}
-          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-slate-900 text-sm">
-                جدول رصد الأسبوع ({filteredStudents.length} طالب)
-              </h3>
-              <span className="text-xs text-slate-500 font-medium">
-                • {selectedClass?.name}
-              </span>
+        {/* =========================================================================
+            1. Mobile Fast Attendance View (Optimized for Mobile/Touch in Workshops)
+           ========================================================================= */}
+        {attendanceViewMode === 'mobile_fast' && (
+          <div className="space-y-4">
+            {/* Fast Day Selector & 1-Click Action Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-amber-600" />
+                  <span>اختر اليوم للتحضير السريع:</span>
+                </label>
+                <span className="text-xs font-mono font-bold text-slate-500">
+                  {selectedMobileDate}
+                </span>
+              </div>
+
+              {/* Day Pills Bar */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                {weekDays.map((d) => {
+                  const isSelected = selectedMobileDate === d.date;
+                  return (
+                    <button
+                      key={d.date}
+                      type="button"
+                      onClick={() => setSelectedMobileDate(d.date)}
+                      className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
+                        isSelected
+                          ? 'bg-slate-900 text-white shadow-md ring-2 ring-slate-900 ring-offset-1'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      } ${d.isToday ? 'border-2 border-amber-500' : ''}`}
+                    >
+                      <span>{d.dayOfWeek}</span>
+                      <span className="text-[10px] font-mono opacity-80">({d.formattedShort})</span>
+                      {d.isToday && (
+                        <span className="bg-amber-500 text-slate-950 text-[9px] px-1.5 py-0.2 rounded font-black">
+                          اليوم
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 1-Click Fast Actions */}
+              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleFastMarkAllPresent(selectedMobileDate)}
+                    className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl font-black shadow-md flex items-center gap-2 cursor-pointer transition active:scale-98"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>✨ تحضير الكل حاضر اليوم (P)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSetDayAllAbsent(selectedMobileDate)}
+                    className="min-h-[44px] bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition"
+                  >
+                    <UserX className="w-4 h-4 text-red-600" />
+                    <span>تحديد الكل غائب</span>
+                  </button>
+                </div>
+
+                {/* Live Search Box */}
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <Search className="w-4 h-4 absolute start-3 top-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="بحث عن طالب بالاسم أو الكود..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl ps-9 pe-3 py-2 min-h-[44px] text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 absolute right-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="بحث بالاسم أو كود الطالب..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-xl pr-9 pl-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-medium"
-              />
+            {/* Mobile Student Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredStudents.length === 0 ? (
+                <div className="col-span-full p-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                  لا يوجد طلاب مطابقين للبحث
+                </div>
+              ) : (
+                filteredStudents.map((student, idx) => {
+                  const currentStatus = weeklyMatrix[student.id]?.[selectedMobileDate];
+
+                  return (
+                    <div
+                      key={student.id}
+                      className={`p-3.5 rounded-2xl border transition-all shadow-2xs space-y-2.5 bg-white ${
+                        currentStatus === 'present'
+                          ? 'border-emerald-300 bg-emerald-50/20'
+                          : currentStatus === 'absent'
+                          ? 'border-red-300 bg-red-50/30'
+                          : currentStatus === 'late'
+                          ? 'border-amber-300 bg-amber-50/30'
+                          : currentStatus === 'excused'
+                          ? 'border-blue-300 bg-blue-50/30'
+                          : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <h4 className="font-black text-slate-900 text-xs sm:text-sm truncate">
+                              {student.fullName}
+                            </h4>
+                          </div>
+                          <div className="text-[10.5px] text-slate-500 font-mono ps-7">
+                            كود: <b className="text-slate-700">{student.studentCode}</b> • قومي: {student.nationalId.slice(0, 4)}***{student.nationalId.slice(-4)}
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="shrink-0">
+                          {currentStatus === 'present' ? (
+                            <span className="bg-emerald-600 text-white text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
+                              <Check className="w-3 h-3" /> حاضر
+                            </span>
+                          ) : currentStatus === 'absent' ? (
+                            <span className="bg-red-600 text-white text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
+                              <XCircle className="w-3 h-3" /> غائب
+                            </span>
+                          ) : currentStatus === 'late' ? (
+                            <span className="bg-amber-500 text-slate-950 text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
+                              <Clock className="w-3 h-3" /> متأخر
+                            </span>
+                          ) : currentStatus === 'excused' ? (
+                            <span className="bg-blue-600 text-white text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
+                              <HelpCircle className="w-3 h-3" /> إذن ورشة
+                            </span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-500 text-[11px] font-bold px-2 py-0.5 rounded-lg border border-dashed border-slate-300">
+                              غير مسجل
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 4 Touch Action Buttons (>= 44px) */}
+                      <div className="grid grid-cols-4 gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleSetStatus(student.id, selectedMobileDate, 'present')}
+                          className={`min-h-[44px] rounded-xl text-xs font-black flex flex-col items-center justify-center gap-0.5 transition cursor-pointer active:scale-95 ${
+                            currentStatus === 'present'
+                              ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500 ring-offset-1'
+                              : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                          }`}
+                        >
+                          <span className="text-sm leading-none font-black">P</span>
+                          <span className="text-[9.5px]">حاضر</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSetStatus(student.id, selectedMobileDate, 'absent')}
+                          className={`min-h-[44px] rounded-xl text-xs font-black flex flex-col items-center justify-center gap-0.5 transition cursor-pointer active:scale-95 ${
+                            currentStatus === 'absent'
+                              ? 'bg-red-600 text-white shadow-sm ring-2 ring-red-500 ring-offset-1'
+                              : 'bg-red-50 text-red-800 hover:bg-red-100 border border-red-200'
+                          }`}
+                        >
+                          <span className="text-sm leading-none font-black">A</span>
+                          <span className="text-[9.5px]">غائب</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSetStatus(student.id, selectedMobileDate, 'late')}
+                          className={`min-h-[44px] rounded-xl text-xs font-black flex flex-col items-center justify-center gap-0.5 transition cursor-pointer active:scale-95 ${
+                            currentStatus === 'late'
+                              ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-400 ring-offset-1'
+                              : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
+                          }`}
+                        >
+                          <span className="text-sm leading-none font-black">L</span>
+                          <span className="text-[9.5px]">متأخر</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSetStatus(student.id, selectedMobileDate, 'excused')}
+                          className={`min-h-[44px] rounded-xl text-xs font-black flex flex-col items-center justify-center gap-0.5 transition cursor-pointer active:scale-95 ${
+                            currentStatus === 'excused'
+                              ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-500 ring-offset-1'
+                              : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'
+                          }`}
+                        >
+                          <span className="text-sm leading-none font-black">E</span>
+                          <span className="text-[9.5px]">إذن</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Sticky Bottom Fast Save Bar for Mobile */}
+            <div className="p-3.5 bg-slate-900 text-white rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-3 sticky bottom-3 z-20 border border-slate-800">
+              <div className="flex items-center gap-3 text-xs flex-wrap">
+                <span className="text-slate-400 font-medium">إجمالي اليوم ({selectedMobileDate}):</span>
+                <span className="font-bold text-emerald-400 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  {classStudents.filter((s) => weeklyMatrix[s.id]?.[selectedMobileDate] === 'present').length} حاضر
+                </span>
+                <span className="font-bold text-red-400 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                  {classStudents.filter((s) => weeklyMatrix[s.id]?.[selectedMobileDate] === 'absent').length} غائب
+                </span>
+                <span className="font-bold text-amber-400 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                  {classStudents.filter((s) => weeklyMatrix[s.id]?.[selectedMobileDate] === 'late').length} متأخر
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveWeekly}
+                  disabled={isSaving || filteredStudents.length === 0}
+                  className="min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black px-6 py-2.5 rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer disabled:opacity-50 text-sm active:scale-98"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSaving ? 'جارٍ الحفظ...' : 'اعتماد وحفظ السجل الآن'}</span>
+                </button>
+              </div>
             </div>
           </div>
+        )}
+
+        {/* =========================================================================
+            2. Weekly Table View (Full Grid)
+           ========================================================================= */}
+        {attendanceViewMode === 'weekly_table' && (
+          <div className="space-y-4">
+            {/* Legend Strip & Fast Guide */}
+            <div className="bg-slate-900 text-white rounded-2xl p-3.5 px-5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
+              <div className="flex items-center gap-6 flex-wrap font-bold">
+                <span className="text-slate-400 font-medium flex items-center gap-1.5">
+                  <Info className="w-4 h-4 text-amber-400" /> دليل الرموز:
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white font-black flex items-center justify-center text-xs">P</span>
+                  <span className="text-emerald-300 font-bold">حاضر (Present)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-red-600 text-white font-black flex items-center justify-center text-xs">A</span>
+                  <span className="text-red-300 font-bold">غائب (Absent)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-xs">E</span>
+                  <span className="text-blue-300 font-bold">استئذان / عذر (Excused)</span>
+                </div>
+              </div>
+
+              <div className="text-amber-300/90 text-[11px] font-medium">
+                💡 انقر على أي خانة للتبديل السريع بين الحالات (P ➔ A ➔ E ➔ P)
+              </div>
+            </div>
+
+            {/* Weekly Attendance Matrix Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              {/* Table Header Controls */}
+              <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    جدول رصد الأسبوع ({filteredStudents.length} طالب)
+                  </h3>
+                  <span className="text-xs text-slate-500 font-medium">
+                    • {selectedClass?.name}
+                  </span>
+                </div>
+
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 absolute start-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="بحث بالاسم أو كود الطالب..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-xl ps-9 pe-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-medium min-h-[44px]"
+                  />
+                </div>
+              </div>
 
           {/* Matrix Grid */}
           <div className="overflow-x-auto">
@@ -1300,6 +1638,8 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
           </div>
         </div>
       </div>
+    )}
     </div>
+  </div>
   );
 };
