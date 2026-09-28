@@ -161,7 +161,7 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
           icon={<Wrench className="w-5 h-5" />}
           variant={deptWorkshopRate >= 85 ? 'emerald' : 'red'}
           badgeText={deptWorkshopRate < 85 ? 'تحت الحد' : undefined}
-          onClick={() => onNavigate('workshop_safety')}
+          onClick={() => onNavigate('safety')}
           actionHint="تقرير ورش القسم"
         />
 

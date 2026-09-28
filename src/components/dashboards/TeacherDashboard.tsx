@@ -130,7 +130,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               variant="warning"
               size="md"
               leftIcon={<CalendarCheck className="w-4 h-4 text-slate-950" />}
-              onClick={() => onNavigate('attendance_taker')}
+              onClick={() => onNavigate('attendance')}
             >
               تحضير ورشة اليوم السريع
             </Button>
@@ -164,7 +164,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           subtitle={todayRecords.length > 0 ? 'تم الرصد لورش اليوم' : 'جاهز للرصد السريع'}
           icon={<CalendarCheck className="w-5 h-5" />}
           variant={todayRate >= 85 ? 'emerald' : 'amber'}
-          onClick={() => onNavigate('attendance_taker')}
+          onClick={() => onNavigate('attendance')}
           actionHint="فتح سجل التحضير"
         />
 
@@ -175,7 +175,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           icon={<AlertTriangle className="w-5 h-5" />}
           variant="red"
           badgeText={atRiskStudents.length > 0 ? 'تنبيه' : undefined}
-          onClick={() => onNavigate('workshop_safety')}
+          onClick={() => onNavigate('safety')}
           actionHint="فحص الغياب"
         />
 
@@ -248,7 +248,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       className="w-full text-xs"
                       onClick={() => {
                         if (onSelectClassForAttendance) onSelectClassForAttendance(cls.id);
-                        onNavigate('attendance_taker');
+                        onNavigate('attendance');
                       }}
                     >
                       تحضير الورشة
@@ -282,7 +282,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
           <div className="space-y-2.5 text-xs">
             <div
-              onClick={() => onNavigate('workshop_safety')}
+              onClick={() => onNavigate('safety')}
               className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-amber-400 transition cursor-pointer space-y-1"
             >
               <div className="font-black text-slate-900 dark:text-slate-100 flex items-center justify-between">
@@ -295,7 +295,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             </div>
 
             <div
-              onClick={() => onNavigate('workshop_safety')}
+              onClick={() => onNavigate('safety')}
               className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-amber-400 transition cursor-pointer space-y-1"
             >
               <div className="font-black text-slate-900 dark:text-slate-100 flex items-center justify-between">

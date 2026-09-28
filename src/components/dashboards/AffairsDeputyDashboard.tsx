@@ -119,7 +119,7 @@ export const AffairsDeputyDashboard: React.FC<AffairsDeputyDashboardProps> = ({
               variant="outline"
               size="md"
               leftIcon={<FileCheck2 className="w-4 h-4" />}
-              onClick={() => onNavigate('student_affairs')}
+              onClick={() => onNavigate('affairs')}
             >
               سجل الأعذار الطبية
             </Button>
@@ -147,7 +147,7 @@ export const AffairsDeputyDashboard: React.FC<AffairsDeputyDashboardProps> = ({
                   key={std.id}
                   onClick={() => {
                     if (onNavigateToStudentReport) onNavigateToStudentReport(std.id);
-                    else onNavigate('report_card');
+                    else onNavigate('student_report');
                   }}
                   className="p-3 hover:bg-indigo-50 dark:hover:bg-slate-800 transition cursor-pointer flex items-center justify-between text-xs"
                 >
@@ -176,7 +176,7 @@ export const AffairsDeputyDashboard: React.FC<AffairsDeputyDashboardProps> = ({
           icon={<AlertTriangle className="w-5 h-5" />}
           variant="amber"
           badgeText={studentsNearWarning1.length > 0 ? 'متابعة' : undefined}
-          onClick={() => onNavigate('student_affairs')}
+          onClick={() => onNavigate('affairs')}
           actionHint="عرض الطلاب"
         />
 
@@ -227,7 +227,7 @@ export const AffairsDeputyDashboard: React.FC<AffairsDeputyDashboardProps> = ({
               </p>
             </div>
 
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('student_affairs')}>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate('affairs')}>
               سجل الطلاب
             </Button>
           </div>
@@ -247,7 +247,7 @@ export const AffairsDeputyDashboard: React.FC<AffairsDeputyDashboardProps> = ({
                     key={student.id}
                     onClick={() => {
                       if (onNavigateToStudentReport) onNavigateToStudentReport(student.id);
-                      else onNavigate('report_card');
+                      else onNavigate('student_report');
                     }}
                     className="p-3.5 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50/40 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer flex flex-wrap items-center justify-between gap-3"
                   >
@@ -291,7 +291,7 @@ export const AffairsDeputyDashboard: React.FC<AffairsDeputyDashboardProps> = ({
 
           <div className="space-y-2.5 text-xs">
             <div
-              onClick={() => onNavigate('student_affairs')}
+              onClick={() => onNavigate('affairs')}
               className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition cursor-pointer space-y-1"
             >
               <div className="font-black text-slate-900 dark:text-slate-100 flex items-center justify-between">

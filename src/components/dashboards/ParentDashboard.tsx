@@ -164,7 +164,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
               variant="outline"
               size="md"
               leftIcon={<Award className="w-4 h-4 text-amber-400" />}
-              onClick={() => onNavigate('report_card')}
+              onClick={() => onNavigate('student_report')}
             >
               تقرير بطاقة الطالب (A4)
             </Button>
@@ -188,7 +188,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
           icon={<Clock className="w-5 h-5" />}
           variant={totalAbs >= 20 ? 'red' : totalAbs >= 10 ? 'amber' : 'emerald'}
           badgeText={totalAbs >= 10 ? 'متابعة مطلوبة' : 'منضبط'}
-          onClick={() => onNavigate('report_card')}
+          onClick={() => onNavigate('student_report')}
           actionHint="تفاصيل الغياب"
         />
 
@@ -200,7 +200,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
           icon={<Wrench className="w-5 h-5" />}
           variant={isWorkshopEligible ? 'emerald' : 'red'}
           badgeText={isWorkshopEligible ? 'مستوفٍ' : 'تحت الحد'}
-          onClick={() => onNavigate('report_card')}
+          onClick={() => onNavigate('student_report')}
           actionHint="حضور الورش"
         />
 

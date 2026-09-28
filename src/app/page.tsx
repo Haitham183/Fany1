@@ -53,6 +53,7 @@ import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
 import { PortalType, SocialCaseRecord } from '@/types';
 import { ToastProvider } from '@/components/ui';
 import { CommandPaletteModal } from '@/components/CommandPaletteModal';
+import { normalizeTabId } from '@/lib/tabRouter';
 
 export default function HomePage() {
   return (
@@ -172,22 +173,27 @@ function MainAppContent() {
     };
   }, []);
 
+  const handleNavigate = (rawTab: string) => {
+    const normalized = normalizeTabId(rawTab);
+    setActiveTab(normalized);
+  };
+
   const handleSelectUser = (user: User) => {
     setCurrentUser(user);
     setCurrentUserState(user);
 
     if (user.role === 'teacher') {
-      setActiveTab('attendance');
+      handleNavigate('attendance');
     } else if (user.role === 'dept_head') {
-      setActiveTab('departments');
+      handleNavigate('departments');
     } else if (user.role === 'external_verifier' || !!user.isInternalVerifier) {
-      setActiveTab('competencies');
+      handleNavigate('competencies');
     } else if (user.role === 'social_worker') {
-      setActiveTab('social_portal');
+      handleNavigate('social_portal');
     } else if (user.role === 'affairs_deputy' || user.role === 'affairs_officer') {
-      setActiveTab('affairs');
+      handleNavigate('affairs');
     } else {
-      setActiveTab('dashboard');
+      handleNavigate('dashboard');
     }
   };
 
@@ -212,17 +218,17 @@ function MainAppContent() {
     setIsParentPortalOpen(false);
 
     if (portal === 'teacher' || user.role === 'teacher') {
-      setActiveTab('attendance');
+      handleNavigate('attendance');
     } else if (portal === 'dept_head' || user.role === 'dept_head') {
-      setActiveTab('departments');
+      handleNavigate('departments');
     } else if (portal === 'competencies' || !!user.isInternalVerifier) {
-      setActiveTab('competencies');
+      handleNavigate('competencies');
     } else if (portal === 'social_worker' || user.role === 'social_worker') {
-      setActiveTab('social_portal');
+      handleNavigate('social_portal');
     } else if (portal === 'affairs' || user.role === 'affairs_deputy' || user.role === 'affairs_officer') {
-      setActiveTab('affairs');
+      handleNavigate('affairs');
     } else {
-      setActiveTab('dashboard');
+      handleNavigate('dashboard');
     }
   };
 
@@ -281,8 +287,8 @@ function MainAppContent() {
         onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebarCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        onNavigateToTab={(tab) => setActiveTab(tab)}
-        onOpenParentPortal={() => setActiveTab('parent_portal')}
+        onNavigateToTab={(tab) => handleNavigate(tab)}
+        onOpenParentPortal={() => handleNavigate('parent_portal')}
         activePortal={activePortal || undefined}
         onSwitchPortal={handleSwitchPortal}
         students={students}
@@ -290,10 +296,10 @@ function MainAppContent() {
         departments={authorizedDepartments}
         onSelectStudentReport={(studentId) => {
           setSelectedReportStudentId(studentId);
-          setActiveTab('student_report');
+          handleNavigate('student_report');
         }}
         onSelectStudentAttendance={(classId) => {
-          setActiveTab('attendance');
+          handleNavigate('attendance');
         }}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
@@ -303,7 +309,7 @@ function MainAppContent() {
         {/* Right Sidebar */}
         <Sidebar
           activeTab={activeTab}
-          onSelectTab={(tabId) => setActiveTab(tabId)}
+          onSelectTab={(tabId) => handleNavigate(tabId)}
           currentUser={currentUser}
           onOpenRoleSwitcher={() => setIsRoleModalOpen(true)}
           onLogout={handleLogout}
@@ -329,7 +335,17 @@ function MainAppContent() {
               notices={notices}
               attendance={attendance}
               currentUser={currentUser}
-              onNavigate={(tab) => setActiveTab(tab)}
+              onNavigate={handleNavigate}
+              onNavigateToStudentReport={(studentId) => {
+                setSelectedReportStudentId(studentId);
+                handleNavigate('student_report');
+              }}
+              onSelectClassForAttendance={(classId) => {
+                handleNavigate('attendance');
+              }}
+              onOpenSocialCase={(caseId) => {
+                handleNavigate('social_portal');
+              }}
             />
           )}
 
@@ -349,14 +365,14 @@ function MainAppContent() {
               schoolConfig={schoolConfig}
               currentUser={currentUser}
               onNavigateToNotices={(studentId) => {
-                setActiveTab('notices');
+                handleNavigate('notices');
               }}
               onNavigateToStudentReport={(studentId) => {
                 setSelectedReportStudentId(studentId);
-                setActiveTab('student_report');
+                handleNavigate('student_report');
               }}
               onNavigateToSocialPortal={() => {
-                setActiveTab('social_portal');
+                handleNavigate('social_portal');
               }}
             />
           )}
@@ -374,9 +390,9 @@ function MainAppContent() {
               onDataChanged={refreshAllData}
               onNavigateToStudentReport={(studentId) => {
                 setSelectedReportStudentId(studentId);
-                setActiveTab('student_report');
+                handleNavigate('student_report');
               }}
-              onNavigateToAiPredictions={() => setActiveTab('ai_prediction')}
+              onNavigateToAiPredictions={() => handleNavigate('ai_prediction')}
             />
           )}
 
@@ -390,7 +406,7 @@ function MainAppContent() {
               onAttendanceSaved={() => {
                 refreshAllData();
               }}
-              onNavigateToNotices={() => setActiveTab('notices')}
+              onNavigateToNotices={() => handleNavigate('notices')}
             />
           )}
 
@@ -426,7 +442,7 @@ function MainAppContent() {
               initialTab={activeTab === 'transfers' ? 'transfers' : 'weekly_sheet'}
               onNavigateToReport={(studentId) => {
                 setSelectedReportStudentId(studentId);
-                setActiveTab('student_report');
+                handleNavigate('student_report');
               }}
             />
           )}
@@ -507,7 +523,7 @@ function MainAppContent() {
 
           {activeTab === 'parent_portal' && (
             <ParentPortalView
-              onBackToLogin={() => setActiveTab('dashboard')}
+              onBackToLogin={() => handleNavigate('dashboard')}
               isStandalone={false}
             />
           )}
@@ -533,13 +549,13 @@ function MainAppContent() {
         classes={authorizedClasses}
         departments={authorizedDepartments}
         currentUser={currentUser}
-        onNavigate={(tab) => setActiveTab(tab)}
+        onNavigate={(tab) => handleNavigate(tab)}
         onSelectStudentReport={(studentId) => {
           setSelectedReportStudentId(studentId);
-          setActiveTab('student_report');
+          handleNavigate('student_report');
         }}
         onSelectClassAttendance={(classId) => {
-          setActiveTab('attendance');
+          handleNavigate('attendance');
         }}
         onOpenRoleSwitcher={() => setIsRoleModalOpen(true)}
         onLogout={handleLogout}

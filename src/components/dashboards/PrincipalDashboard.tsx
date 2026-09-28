@@ -136,7 +136,7 @@ export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({
           subtitle="نسبة الحضور الفعلي للفصول"
           icon={<Users className="w-5 h-5" />}
           variant="blue"
-          onClick={() => onNavigate('attendance_taker')}
+          onClick={() => onNavigate('attendance')}
           actionHint="فتح سجل الحضور"
         />
 
@@ -146,7 +146,7 @@ export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({
           subtitle="نسبة التواجد بالورش والمعامل"
           icon={<CheckCircle2 className="w-5 h-5" />}
           variant="emerald"
-          onClick={() => onNavigate('workshop_safety')}
+          onClick={() => onNavigate('safety')}
           actionHint="فحص الورش"
         />
 
@@ -167,7 +167,7 @@ export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({
           subtitle={`${classes.length} فصل عبر ${departments.length} أقسام صناعية`}
           icon={<Building2 className="w-5 h-5" />}
           variant="slate"
-          onClick={() => onNavigate('student_affairs')}
+          onClick={() => onNavigate('affairs')}
           actionHint="سجل الطلاب"
         />
       </div>
@@ -187,7 +187,7 @@ export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({
               </p>
             </div>
 
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('department_reports')}>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate('departments')}>
               عرض تقارير الأقسام
             </Button>
           </div>
@@ -200,7 +200,7 @@ export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({
               return (
                 <div
                   key={dept.id}
-                  onClick={() => onNavigate('attendance_taker')}
+                  onClick={() => onNavigate('attendance')}
                   className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition cursor-pointer space-y-1.5"
                 >
                   <div className="flex items-center justify-between text-xs font-bold">
@@ -267,7 +267,7 @@ export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({
             </div>
 
             <div
-              onClick={() => onNavigate('daily_census')}
+              onClick={() => onNavigate('census')}
               className="p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 hover:bg-blue-100/60 transition cursor-pointer space-y-1"
             >
               <div className="flex items-center justify-between text-xs font-black text-blue-900 dark:text-blue-200">

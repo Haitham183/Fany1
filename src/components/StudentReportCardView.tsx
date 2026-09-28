@@ -78,6 +78,12 @@ export const StudentReportCardView: React.FC<StudentReportCardViewProps> = ({
     initialStudentId || students[0]?.id || ''
   );
 
+  React.useEffect(() => {
+    if (initialStudentId) {
+      setSelectedStudentId(initialStudentId);
+    }
+  }, [initialStudentId]);
+
   // Search Results Autocomplete
   const matchingStudents = useMemo(() => {
     if (!searchQuery.trim()) return [];
