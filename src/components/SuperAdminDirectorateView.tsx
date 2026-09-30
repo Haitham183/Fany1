@@ -549,7 +549,7 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
                             className="font-bold text-xs"
                             onClick={() => handleSwitchSchool(s.id)}
                           >
-                            {isCurrent ? 'أنت تديرها الآن' : 'الدخول للمدرسة ➔'}
+                            {isCurrent ? 'تفتيش السجلات 🔍' : 'بدء التفتيش الإداري ➔'}
                           </Button>
                         </td>
                       </tr>
@@ -685,7 +685,7 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
                       className="flex-1 font-bold text-xs"
                       onClick={() => handleSwitchSchool(s.id)}
                     >
-                      {isCurrent ? '✓ تدير هذه المدرسة الآن' : 'الدخول المباشر للمدرسة ➔'}
+                      {isCurrent ? 'فحص وتفتيش السجلات 🔍' : 'بدء التفتيش الإداري ➔'}
                     </Button>
 
                     <button

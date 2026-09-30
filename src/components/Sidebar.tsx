@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
-import { User, SchoolConfig, PortalType } from '@/types';
+import { User, SchoolConfig, PortalType, SchoolTenant } from '@/types';
 import {
   LayoutDashboard,
   Wrench,
@@ -45,6 +45,8 @@ interface SidebarProps {
   activePortal?: PortalType;
   onSwitchPortal?: () => void;
   onOpenCommandPalette?: () => void;
+  inspectingSchool?: SchoolTenant | null;
+  onExitInspection?: () => void;
 }
 
 interface NavItem {
@@ -77,6 +79,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activePortal,
   onSwitchPortal,
   onOpenCommandPalette,
+  inspectingSchool = null,
+  onExitInspection,
 }) => {
   const role = currentUser.role;
 
@@ -86,79 +90,105 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     // 0. DIRECTORATE ADMIN MENU (Super Admin / Directorate Level)
     if (role === 'directorate_admin') {
-      list.push({
-        title: 'القيادة المركزية والتحكم في المدارس',
-        items: [
-          {
-            id: 'directorate',
-            label: 'كابينة تحكم المديرية المركزية 🏛️',
-            icon: School,
-            badge: 'مركزي',
-            badgeColor: 'bg-amber-500 text-slate-950 font-bold',
-            visible: true,
-          },
-          {
-            id: 'directorate_schools',
-            label: 'شبكة وإدارة المدارس الفنية',
-            icon: Building2,
-            visible: true,
-          },
-          {
-            id: 'directorate_competencies',
-            label: 'رقابة الجدارات ونسب الورش 85%',
-            icon: Award,
-            visible: true,
-          },
-          {
-            id: 'directorate_attendance',
-            label: 'مرصد الغياب ومواظبة 5',
-            icon: TrendingUp,
-            visible: true,
-          },
-          {
-            id: 'directorate_circulars',
-            label: 'القرارات والكتب الدورية للمدارس',
-            icon: FileText,
-            visible: true,
-          },
-          {
-            id: 'directorate_inspection',
-            label: 'سجل التفتيش والمتابعة الميدانية',
-            icon: ShieldAlert,
-            visible: true,
-          },
-        ],
-      });
+      if (inspectingSchool) {
+        // Mode A: Active Field Inspection of a Specific School
+        list.push({
+          title: `تفتيش مدرسة: ${inspectingSchool.name}`,
+          items: [
+            {
+              id: 'dashboard',
+              label: 'لوحة فحص المدرسة الميدانية',
+              icon: LayoutDashboard,
+              badge: 'تفتيش',
+              badgeColor: 'bg-amber-500 text-slate-950 font-bold',
+              visible: true,
+            },
+            {
+              id: 'census',
+              label: 'إحصاء 5 ومواظبة الطلاب',
+              icon: TrendingUp,
+              visible: true,
+            },
+            {
+              id: 'competencies',
+              label: 'فحص نسب حضور الورش والجدارات',
+              icon: Award,
+              visible: true,
+            },
+            {
+              id: 'official_sheets',
+              label: 'مراجعة دفاتر 41 وسر 1',
+              icon: FileText,
+              visible: true,
+            },
+            {
+              id: 'departments',
+              label: 'تفتيش أقسام وورش المدرسة',
+              icon: Building2,
+              visible: true,
+            },
+          ],
+        });
 
-      list.push({
-        title: 'معاينة سجلات المدرسة المحددة',
-        items: [
-          {
-            id: 'dashboard',
-            label: 'لوحة المدرسة النشطة',
-            icon: LayoutDashboard,
-            visible: true,
-          },
-          {
-            id: 'census',
-            label: 'إحصاء 5 مواظبة للمدرسة',
-            icon: TrendingUp,
-            visible: true,
-          },
-          {
-            id: 'competencies',
-            label: 'جدارات المدرسة النشطة',
-            icon: Award,
-            visible: true,
-          },
-          {
-            id: 'official_sheets',
-            label: 'شيتات 41 وسر 1 للمدرسة',
-            icon: FileText,
-            visible: true,
-          },
-        ],
-      });
+        list.push({
+          title: 'الإنهاء والعودة للمنظومة',
+          items: [
+            {
+              id: 'directorate',
+              label: 'العودة لغرفة القيادة المركزية ⮌',
+              icon: School,
+              badge: 'خروج',
+              badgeColor: 'bg-slate-900 text-white font-black',
+              visible: true,
+            },
+          ],
+        });
+      } else {
+        // Mode B: Standard Directorate Central Command Cockpit (Pure Directorate Tools, Zero School Tabs)
+        list.push({
+          title: 'القيادة المركزية والتحكم في المدارس',
+          items: [
+            {
+              id: 'directorate',
+              label: 'غرفة العمليات والمؤشرات المركزية 🏛️',
+              icon: School,
+              badge: 'مركزي',
+              badgeColor: 'bg-amber-500 text-slate-950 font-bold',
+              visible: true,
+            },
+            {
+              id: 'directorate_schools',
+              label: 'شبكة وإدارة المدارس الفنية',
+              icon: Building2,
+              visible: true,
+            },
+            {
+              id: 'directorate_competencies',
+              label: 'رقابة الجدارات ونسب الورش 85%',
+              icon: Award,
+              visible: true,
+            },
+            {
+              id: 'directorate_attendance',
+              label: 'مرصد الغياب ومواظبة 5',
+              icon: TrendingUp,
+              visible: true,
+            },
+            {
+              id: 'directorate_circulars',
+              label: 'القرارات والكتب الدورية للمدارس',
+              icon: FileText,
+              visible: true,
+            },
+            {
+              id: 'directorate_inspection',
+              label: 'سجل التفتيش والمتابعة الميدانية',
+              icon: ShieldAlert,
+              visible: true,
+            },
+          ],
+        });
+      }
 
       return list;
     }
@@ -555,7 +585,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
 
     return list;
-  }, [role, noticesCount, socialCasesCount]);
+  }, [role, noticesCount, socialCasesCount, inspectingSchool]);
 
   return (
     <>

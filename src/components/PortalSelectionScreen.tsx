@@ -406,7 +406,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
             جمهورية مصر العربية • وزارة التربية والتعليم والتعليم الفني
           </span>
           <span className="hidden sm:inline text-slate-700">|</span>
-          <span className="hidden sm:inline text-slate-400">{schoolConfig.directorate}</span>
+          <span className="hidden sm:inline text-slate-400">قطاع التعليم الفني والتجهيزات • البوابة الرقمية الموحدة</span>
         </div>
 
         <div className="flex items-center gap-2 mx-auto sm:mx-0">
@@ -419,7 +419,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
 
       {/* Main Center Container */}
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:py-10 flex flex-col items-center justify-center">
-        {/* School Branding & High-Impact Logo Header */}
+        {/* Unified Portal Branding & High-Impact Logo Header */}
         <div className="text-center space-y-3.5 mb-6 max-w-2xl">
           {/* Animated 3D Vector Shield Logo */}
           <div className="inline-block relative group">
@@ -436,13 +436,13 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-100 to-amber-300 leading-tight">
-              {schoolConfig.name}
+              بوابة التعليم الفني والتدريب المهني الموحدة
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium flex items-center justify-center gap-2">
-              <span>{schoolConfig.administration}</span>
+              <span>المنظومة المركزية لإدارة المدارس الفنية وتقييم الجدارات</span>
               <span>•</span>
-              <span className="text-amber-400/90 font-bold">قطاع التعليم الفني والتجهيزات</span>
+              <span className="text-amber-400/90 font-bold">وزارة التربية والتعليم والتعليم الفني</span>
             </p>
           </div>
         </div>

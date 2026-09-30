@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { User, SchoolConfig, EarlyWarningAlert, PortalType, Student, SchoolClass, Department } from '@/types';
+import { User, SchoolConfig, EarlyWarningAlert, PortalType, Student, SchoolClass, Department, SchoolTenant } from '@/types';
 import { getSmartEarlyWarnings } from '@/lib/storage';
 import { getCurrentSyncStatus, SyncStatusDetail } from '@/lib/supabaseSync';
 import { EduTechIndustrialLogo } from '@/components/EduTechIndustrialLogo';
@@ -23,6 +23,7 @@ import {
   Flame,
   Award,
   ArrowUpRight,
+  ArrowRight,
   GraduationCap,
   X,
   ExternalLink,
@@ -58,6 +59,8 @@ interface HeaderProps {
   onSelectStudentAttendance?: (classId: string) => void;
   onOpenCommandPalette?: () => void;
   onOpenSchoolSwitcher?: () => void;
+  inspectingSchool?: SchoolTenant | null;
+  onExitInspection?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -80,6 +83,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectStudentAttendance,
   onOpenCommandPalette,
   onOpenSchoolSwitcher,
+  inspectingSchool = null,
+  onExitInspection,
 }) => {
   const [alerts, setAlerts] = useState<EarlyWarningAlert[]>([]);
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -180,7 +185,10 @@ export const Header: React.FC<HeaderProps> = ({
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'directorate_admin':
-        return { label: 'مسئول المديرية 🏛️', bg: 'bg-amber-100 text-amber-900 border-amber-400' };
+        return {
+          label: inspectingSchool ? 'تفتيش ميداني 🔍' : 'مسئول المديرية 🏛️',
+          bg: 'bg-amber-100 text-amber-900 border-amber-400',
+        };
       case 'principal':
         return { label: 'مدير المدرسة', bg: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
       case 'affairs_deputy':
@@ -206,7 +214,13 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>جمهورية مصر العربية - وزارة التربية والتعليم والتعليم الفني</span>
           <span className="hidden sm:inline text-slate-600">|</span>
-          <span className="hidden sm:inline">{schoolConfig.administration || 'التعليم الفني الصناعي'}</span>
+          <span className="hidden sm:inline">
+            {currentUser.role === 'directorate_admin'
+              ? inspectingSchool
+                ? `وضع التفتيش الميداني: ${inspectingSchool.name}`
+                : 'الإدارة المركزية للتعليم الفني والتدريب المهني • قيادة المحافظة'
+              : schoolConfig.administration || 'التعليم الفني الصناعي'}
+          </span>
         </div>
         <div className="flex items-center gap-3">
           {/* Real-time Cloud Sync Live Badge */}
@@ -287,30 +301,64 @@ export const Header: React.FC<HeaderProps> = ({
           {/* School Emblem / Logo */}
           <EduTechIndustrialLogo size="sm" animated={false} className="shrink-0" />
 
-          {/* School Details */}
+          {/* Header Title Block */}
           <div className="min-w-0 hidden md:block">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-sm sm:text-base font-black text-white leading-normal truncate">
-                {schoolConfig.name}
-              </h1>
-              {onOpenSchoolSwitcher && currentUser.role === 'directorate_admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenSchoolSwitcher}
-                  className="inline-flex items-center gap-1 text-[10.5px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/40 font-bold shrink-0 transition cursor-pointer"
-                  title="تبديل المدرسة النشطة (خاص بمديرية التعليم الفني)"
-                >
-                  <Building2 className="w-3 h-3 text-amber-400" />
-                  <span>تبديل المدرسة (المديرية) ⟲</span>
-                </button>
-              )}
-              <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30 font-bold shrink-0">
-                <Sparkles className="w-3 h-3 text-cyan-400" /> نظام الجدارات المطور
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 truncate">
-              {schoolConfig.directorate} {schoolConfig.administration ? `• ${schoolConfig.administration}` : ''} • المنظومة الإلكترونية للغياب والورش
-            </p>
+            {currentUser.role === 'directorate_admin' ? (
+              inspectingSchool ? (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1 text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                      <ShieldAlert className="w-3 h-3 text-amber-400" /> تفتيش ميداني
+                    </span>
+                    <h1 className="text-sm sm:text-base font-black text-amber-300 leading-normal truncate">
+                      {inspectingSchool.name}
+                    </h1>
+                    {onExitInspection && (
+                      <button
+                        type="button"
+                        onClick={onExitInspection}
+                        className="inline-flex items-center gap-1 text-[10.5px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2.5 py-0.5 rounded-full shadow-xs transition cursor-pointer"
+                        title="إنهاء التفتيش والعودة لغرفة القيادة المركزية"
+                      >
+                        <ArrowRight className="w-3 h-3" />
+                        <span>العودة للمديرية</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {inspectingSchool.directorate} • {inspectingSchool.administration} • زيارة تفتيش ومتابعة إدارية
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-sm sm:text-base font-black text-white leading-normal truncate">
+                      مديرية التربية والتعليم • قيادة التعليم الفني بالمحافظة
+                    </h1>
+                    <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold shrink-0">
+                      <Sparkles className="w-3 h-3 text-amber-400" /> كابينة الرقابة المركزية
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    غرفة العمليات المركزية لإدارة ومتابعة شبكة المدارس الفنية وتطبيق الجدارات
+                  </p>
+                </>
+              )
+            ) : (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-sm sm:text-base font-black text-white leading-normal truncate">
+                    {schoolConfig.name}
+                  </h1>
+                  <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30 font-bold shrink-0">
+                    <Sparkles className="w-3 h-3 text-cyan-400" /> نظام الجدارات المطور
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {schoolConfig.directorate} {schoolConfig.administration ? `• ${schoolConfig.administration}` : ''} • المنظومة الإلكترونية للغياب والورش
+                </p>
+              </>
+            )}
           </div>
         </div>
 

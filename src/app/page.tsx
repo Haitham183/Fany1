@@ -9,6 +9,7 @@ import {
   User,
   AttendanceRecord,
   SchoolConfig,
+  SchoolTenant,
 } from '@/types';
 import {
   initializeData,
@@ -27,9 +28,12 @@ import {
   logout,
   resetToDefaultData,
   wipeDatabaseForProduction,
+  getSchools,
+  setActiveSchoolId,
 } from '@/lib/storage';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
+import { ShieldAlert, ArrowRight } from 'lucide-react';
 import { setupRealtimeSync, pullAllDataFromCloud } from '@/lib/supabaseSync';
 import { RoleSwitcherModal } from '@/components/RoleSwitcherModal';
 import { DashboardView } from '@/components/DashboardView';
@@ -81,6 +85,7 @@ function MainAppContent() {
   const [notices, setNotices] = useState<OfficialNotice[]>([]);
   const [socialCases, setSocialCases] = useState<SocialCaseRecord[]>([]);
   const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
+  const [inspectingSchool, setInspectingSchool] = useState<SchoolTenant | null>(null);
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedReportStudentId, setSelectedReportStudentId] = useState<string | undefined>(undefined);
@@ -188,6 +193,20 @@ function MainAppContent() {
   const handleNavigate = (rawTab: string) => {
     let normalized = normalizeTabId(rawTab);
 
+    // If navigating back to central directorate command windows, exit inspection mode
+    if (
+      normalized === 'directorate' ||
+      normalized === 'directorate_schools' ||
+      normalized === 'directorate_competencies' ||
+      normalized === 'directorate_attendance' ||
+      normalized === 'directorate_circulars' ||
+      normalized === 'directorate_inspection'
+    ) {
+      if (inspectingSchool) {
+        setInspectingSchool(null);
+      }
+    }
+
     // Strictly validate if the user's role is authorized to open this tab
     if (!canRoleAccessTab(currentUser.role, normalized)) {
       normalized = getDefaultTabForRole(currentUser.role);
@@ -196,7 +215,13 @@ function MainAppContent() {
     setActiveTab(normalized);
   };
 
+  const handleExitInspection = () => {
+    setInspectingSchool(null);
+    handleNavigate('directorate');
+  };
+
   const handleSelectUser = (user: User) => {
+    setInspectingSchool(null);
     setCurrentUser(user);
     setCurrentUserState(user);
 
@@ -218,6 +243,7 @@ function MainAppContent() {
   };
 
   const handleLogout = () => {
+    setInspectingSchool(null);
     logout();
     setIsAuthenticated(false);
     setActivePortal(null);
@@ -225,6 +251,7 @@ function MainAppContent() {
   };
 
   const handleSwitchPortal = () => {
+    setInspectingSchool(null);
     logout();
     setIsAuthenticated(false);
     setActivePortal(null);
@@ -232,6 +259,7 @@ function MainAppContent() {
   };
 
   const handlePortalLoginSuccess = (user: User, portal: PortalType) => {
+    setInspectingSchool(null);
     setCurrentUserState(user);
     setActivePortal(portal);
     setIsAuthenticated(true);
@@ -328,7 +356,28 @@ function MainAppContent() {
         }}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         onOpenSchoolSwitcher={() => setIsSchoolSwitcherOpen(true)}
+        inspectingSchool={inspectingSchool}
+        onExitInspection={handleExitInspection}
       />
+
+      {/* Active Field Inspection Mode Banner for Directorate */}
+      {currentUser.role === 'directorate_admin' && inspectingSchool && (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 px-4 py-2 text-xs font-black flex items-center justify-between shadow-md border-b border-amber-600 no-print shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-950 animate-ping shrink-0"></span>
+            <ShieldAlert className="w-4 h-4 text-slate-950 shrink-0" />
+            <span className="truncate">
+              وضع التفتيش الإداري والميداني لقيادة المديرية: أنت تعاين حالياً سجلات [{inspectingSchool.name}] (كود: {inspectingSchool.code})
+            </span>
+          </div>
+          <button
+            onClick={handleExitInspection}
+            className="bg-slate-950 hover:bg-slate-900 text-amber-300 px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0"
+          >
+            <span>إنهاء المعاينة والعودة لغرفة القيادة المركزية ⮌</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Layout: Sidebar on Right (RTL) + Scrollable Main Content */}
       <div className="flex flex-1 min-h-0 relative max-w-full overflow-hidden">
@@ -349,6 +398,8 @@ function MainAppContent() {
           activePortal={activePortal || undefined}
           onSwitchPortal={handleSwitchPortal}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          inspectingSchool={inspectingSchool}
+          onExitInspection={handleExitInspection}
         />
 
         {/* Content Area */}
@@ -367,7 +418,10 @@ function MainAppContent() {
                 classes={classes}
                 attendance={attendance}
                 initialSubTab={activeTab}
-                onNavigateToSchool={(_schoolId) => {
+                onNavigateToSchool={(schoolId) => {
+                  const target = getSchools().find((s) => s.id === schoolId) || null;
+                  setActiveSchoolId(schoolId);
+                  setInspectingSchool(target);
                   refreshAllData();
                   handleNavigate('dashboard');
                 }}
@@ -614,12 +668,15 @@ function MainAppContent() {
           isOpen={isSchoolSwitcherOpen}
           onClose={() => setIsSchoolSwitcherOpen(false)}
           currentUser={currentUser}
-          onSchoolSwitched={(_school) => {
+          onSchoolSwitched={(school) => {
+            setInspectingSchool(school || null);
             refreshAllData();
+            handleNavigate('dashboard');
           }}
           onManageSchools={() => {
             setIsSchoolSwitcherOpen(false);
-            handleNavigate('directorate');
+            setInspectingSchool(null);
+            handleNavigate('directorate_schools');
           }}
         />
       )}
