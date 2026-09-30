@@ -115,7 +115,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
   const remainingToExpulsion = Math.max(0, 30 - totalAbs);
   const remainingToWarning1 = Math.max(0, 10 - totalAbs);
 
-  const workshopRate = currentStudent.workshopAttendanceRate ?? 92;
+  const workshopRate = currentStudent.workshopAttendanceRate ?? 0;
   const isWorkshopEligible = workshopRate >= 85;
 
   return (

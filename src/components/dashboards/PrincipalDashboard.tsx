@@ -56,15 +56,15 @@ export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({
   const todayAttendanceRate =
     totalStudentsCount > 0 && todayTotal > 0
       ? Math.round((todayPresent / todayTotal) * 100)
-      : 94; // fallback sample if not recorded today
+      : 0;
 
   // Workshop Attendance rate
   const workshopRecords = attendance.filter((a) => a.periodType === 'workshop');
   const workshopPresent = workshopRecords.filter((a) => a.status === 'present' || a.status === 'late').length;
   const workshopRate =
-    workshopRecords.length > 0
+    totalStudentsCount > 0 && workshopRecords.length > 0
       ? Math.round((workshopPresent / workshopRecords.length) * 100)
-      : 89;
+      : 0;
 
   // Critical Decisions requiring Principal Approval
   const pendingExpulsions = students.filter((s) => s.warningLevel === 3);
@@ -77,7 +77,7 @@ export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({
     const deptStudentIds = new Set(deptStudents.map((s) => s.id));
     const deptAttendance = attendance.filter((a) => deptStudentIds.has(a.studentId));
     const pres = deptAttendance.filter((a) => a.status === 'present' || a.status === 'late').length;
-    const rate = deptAttendance.length > 0 ? Math.round((pres / deptAttendance.length) * 100) : 88;
+    const rate = deptAttendance.length > 0 ? Math.round((pres / deptAttendance.length) * 100) : 0;
     return {
       ...d,
       studentCount: deptStudents.length,

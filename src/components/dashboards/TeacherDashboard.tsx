@@ -74,7 +74,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   }, [attendance, todayDateStr, assignedClassIds]);
 
   const todayPresent = todayRecords.filter((a) => a.status === 'present' || a.status === 'late').length;
-  const todayRate = todayRecords.length > 0 ? Math.round((todayPresent / todayRecords.length) * 100) : 91;
+  const todayRate =
+    teacherStudents.length > 0 && todayRecords.length > 0
+      ? Math.round((todayPresent / todayRecords.length) * 100)
+      : 0;
 
   // Students in Teacher's classes below 85% workshop attendance
   const atRiskStudents = useMemo(() => {

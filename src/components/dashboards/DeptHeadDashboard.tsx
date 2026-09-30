@@ -86,7 +86,7 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   const deptWorkshopRate =
     deptAttendance.length > 0
       ? Math.round((deptPresent / deptAttendance.length) * 100)
-      : 88;
+      : 0;
 
   return (
     <div className="space-y-5">
@@ -203,7 +203,7 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
             const passRate =
               unitAssessments.length > 0
                 ? Math.round((competentCount / unitAssessments.length) * 100)
-                : 92;
+                : 0;
 
             return (
               <div
