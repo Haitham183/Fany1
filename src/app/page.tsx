@@ -186,7 +186,10 @@ function MainAppContent() {
   }, []);
 
   const handleNavigate = (rawTab: string) => {
-    const normalized = normalizeTabId(rawTab);
+    let normalized = normalizeTabId(rawTab);
+    if (normalized === 'directorate' && currentUser.role !== 'directorate_admin') {
+      normalized = 'dashboard';
+    }
     setActiveTab(normalized);
   };
 
@@ -347,7 +350,7 @@ function MainAppContent() {
 
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 max-w-full overflow-y-auto custom-scrollbar transition-all duration-300">
-          {activeTab === 'directorate' && (
+          {activeTab === 'directorate' && currentUser.role === 'directorate_admin' && (
             <SuperAdminDirectorateView
               currentUser={currentUser}
               onNavigateToSchool={(_schoolId) => {
@@ -591,19 +594,21 @@ function MainAppContent() {
         onLogout={handleLogout}
       />
 
-      {/* School Switcher Modal */}
-      <SchoolSwitcherModal
-        isOpen={isSchoolSwitcherOpen}
-        onClose={() => setIsSchoolSwitcherOpen(false)}
-        currentUser={currentUser}
-        onSchoolSwitched={(_school) => {
-          refreshAllData();
-        }}
-        onManageSchools={() => {
-          setIsSchoolSwitcherOpen(false);
-          handleNavigate('directorate');
-        }}
-      />
+      {/* School Switcher Modal (Only for Central Directorate Admin) */}
+      {currentUser.role === 'directorate_admin' && (
+        <SchoolSwitcherModal
+          isOpen={isSchoolSwitcherOpen}
+          onClose={() => setIsSchoolSwitcherOpen(false)}
+          currentUser={currentUser}
+          onSchoolSwitched={(_school) => {
+            refreshAllData();
+          }}
+          onManageSchools={() => {
+            setIsSchoolSwitcherOpen(false);
+            handleNavigate('directorate');
+          }}
+        />
+      )}
 
       {/* Persistent PWA & Offline Sync Status Banner */}
       <OfflineSyncBanner />

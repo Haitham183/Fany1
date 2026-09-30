@@ -45,7 +45,8 @@ interface PortalSelectionScreenProps {
 type MainTab = 'staff' | 'parent';
 
 interface StaffPortalInfo {
-  id: PortalType;
+  id: string;
+  portalType?: PortalType;
   roleKey: UserRole;
   title: string;
   subtitle: string;
@@ -71,11 +72,11 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   // Main Track Tab: 'staff' (كادر مدرسي) or 'parent' (ولي أمر وطالب)
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('staff');
 
-  // Staff selected portal filter / pill
-  const [selectedStaffPortal, setSelectedStaffPortal] = useState<PortalType>('principal');
+  // Staff selected portal filter / pill (Default to central Directorate Leadership)
+  const [selectedStaffPortal, setSelectedStaffPortal] = useState<string>('directorate');
 
-  // Staff Credentials
-  const [username, setUsername] = useState('admin');
+  // Staff Credentials (Default to central Directorate)
+  const [username, setUsername] = useState('directorate');
   const [password, setPassword] = useState('123');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -183,14 +184,15 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   const staffPortals: StaffPortalInfo[] = [
     {
       id: 'directorate',
+      portalType: 'directorate',
       roleKey: 'directorate_admin',
       title: 'قيادة المديرية والمدارس',
-      subtitle: 'التحكم المركزي ومتابعة المحافظة',
+      subtitle: 'التحكم المركزي ومتابعة المحافظة ومؤشرات المدارس المجمعة',
       badge: 'إدارة مركزية 🏛️',
       icon: Building2,
       defaultUsername: 'directorate',
       color: {
-        pillActive: 'bg-amber-600 text-white font-black shadow-lg shadow-amber-600/25 border-amber-300 ring-2 ring-amber-400/50',
+        pillActive: 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 font-black shadow-xl shadow-amber-500/30 border-amber-300 ring-2 ring-amber-400/50',
         borderActive: 'border-amber-500/50',
         bgGlow: 'from-amber-600/20 via-slate-900 to-slate-950',
         accent: 'text-amber-400',
@@ -200,9 +202,10 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
     },
     {
       id: 'principal',
+      portalType: 'principal',
       roleKey: 'principal',
       title: 'مدير عام المدرسة',
-      subtitle: 'الإدارة العليا والرقابة المركزية',
+      subtitle: 'الإدارة العليا والرقابة والاعتماد المدرسي',
       badge: 'إدارة عليا',
       icon: Building2,
       defaultUsername: 'admin',
@@ -217,10 +220,11 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
     },
     {
       id: 'affairs',
+      portalType: 'affairs',
       roleKey: 'affairs_deputy',
-      title: 'شئون الطلاب والإحصاء',
-      subtitle: 'السجلات والإحصاء والإنذارات',
-      badge: 'شئون طلاب',
+      title: 'وكيل شئون الطلاب (مادة 25)',
+      subtitle: 'لجنة الانضباط، التحويلات، والإنذارات الرسمية',
+      badge: 'وكيل شئون',
       icon: Users,
       defaultUsername: 'affairs',
       color: {
@@ -230,7 +234,25 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
         accent: 'text-emerald-400',
         badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
       },
-      description: 'سجلات الطلاب، الإحصاء الصباحي (5 مواظبة)، الشيتات الوزارية (1 سر / 41)، وإصدار الإنذارات.',
+      description: 'اعتماد الإنذارات وقرارات الفصل، تحويلات الطلاب، والإشراف على لجنة الانضباط المدرسي وفق المادة 25.',
+    },
+    {
+      id: 'affairs_officer',
+      portalType: 'affairs',
+      roleKey: 'affairs_officer',
+      title: 'مسئول الشيتات ودفتر 41',
+      subtitle: 'دفتر 41 وشيتات سر 1 والإحصاء الصباحي',
+      badge: 'شئون طلبة',
+      icon: UserCheck,
+      defaultUsername: 'officer',
+      color: {
+        pillActive: 'bg-cyan-600 text-white font-black shadow-lg shadow-cyan-600/25 border-cyan-300 ring-2 ring-cyan-400/50',
+        borderActive: 'border-cyan-500/50',
+        bgGlow: 'from-cyan-500/20 via-slate-900 to-slate-950',
+        accent: 'text-cyan-400',
+        badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+      },
+      description: 'سجلات الطلاب، دفتر 41 المستجدين، شيت سر 1، ومسودات إخطارات الغياب والمواظبة.',
     },
     {
       id: 'competencies',
@@ -482,9 +504,9 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                     </span>
                   </div>
 
-                  {/* Horizontal Segmented Pills */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {staffPortals.map((p) => {
+                  {/* Primary Featured Portal: Directorate Central Cockpit */}
+                  <div className="space-y-2">
+                    {staffPortals.filter((p) => p.id === 'directorate').map((p) => {
                       const Icon = p.icon;
                       const isSelected = selectedStaffPortal === p.id;
                       return (
@@ -492,17 +514,68 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                           key={p.id}
                           type="button"
                           onClick={() => handleQuickDemoFill(p)}
-                          className={`p-2.5 rounded-xl border text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                          className={`w-full p-3 rounded-2xl border text-right transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer ${
                             isSelected
-                              ? `${p.color.pillActive} border-2`
-                              : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:bg-slate-800/90 hover:border-slate-700'
+                              ? 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/25 border-amber-300 ring-2 ring-amber-400/50'
+                              : 'bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 border-amber-500/40 text-amber-200 hover:border-amber-400 hover:bg-slate-800/90'
                           }`}
                         >
-                          <Icon className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{p.title}</span>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                              isSelected ? 'bg-slate-950 text-amber-400' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            }`}>
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs sm:text-sm font-black ${isSelected ? 'text-slate-950' : 'text-white'}`}>
+                                  {p.title}
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                                  isSelected ? 'bg-slate-950 text-amber-400' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                }`}>
+                                  ★ البوابة الرئيسية المركزية
+                                </span>
+                              </div>
+                              <p className={`text-[11px] mt-0.5 truncate max-w-xs sm:max-w-md ${isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'}`}>
+                                {p.subtitle}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-left hidden sm:block">
+                            <span className={`text-[11px] font-mono font-bold block ${isSelected ? 'text-slate-950' : 'text-amber-400'}`}>
+                              @{p.defaultUsername}
+                            </span>
+                            <span className={`text-[9.5px] ${isSelected ? 'text-slate-800' : 'text-slate-500'}`}>
+                              إشراف المديرية
+                            </span>
+                          </div>
                         </button>
                       );
                     })}
+
+                    {/* School Internal Staff Portals Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
+                      {staffPortals.filter((p) => p.id !== 'directorate').map((p) => {
+                        const Icon = p.icon;
+                        const isSelected = selectedStaffPortal === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => handleQuickDemoFill(p)}
+                            className={`p-2.5 rounded-xl border text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                              isSelected
+                                ? `${p.color.pillActive} border-2`
+                                : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:bg-slate-800/90 hover:border-slate-700'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{p.title}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
@@ -603,7 +676,11 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                         key={p.id}
                         type="button"
                         onClick={() => handleQuickDemoFill(p)}
-                        className="text-[10.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white px-2.5 py-1 rounded-lg border border-slate-800 transition cursor-pointer font-bold flex items-center gap-1"
+                        className={`text-[10.5px] px-2.5 py-1 rounded-lg border transition cursor-pointer font-bold flex items-center gap-1 ${
+                          selectedStaffPortal === p.id
+                            ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-xs'
+                            : 'bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
+                        }`}
                         title={`تعبئة بيانات حساب ${p.title}`}
                       >
                         <span>{p.title}</span>

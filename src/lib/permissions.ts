@@ -123,7 +123,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     system_admin: { V: true, C: true, A: false },
     external_verifier: { V: false, C: false, A: false },
   },
-  school_settings: {
+    school_settings: {
     directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: false, C: false, A: false },
@@ -133,6 +133,18 @@ export const ROLE_PERMISSION_MATRIX: Record<
     teacher: { V: false, C: false, A: false },
     parent: { V: false, C: false, A: false },
     system_admin: { V: true, C: true, A: false },
+    external_verifier: { V: false, C: false, A: false },
+  },
+  multi_school_directorate: {
+    directorate_admin: { V: true, C: true, A: true },
+    principal: { V: false, C: false, A: false },
+    affairs_deputy: { V: false, C: false, A: false },
+    affairs_officer: { V: false, C: false, A: false },
+    social_worker: { V: false, C: false, A: false },
+    dept_head: { V: false, C: false, A: false },
+    teacher: { V: false, C: false, A: false },
+    parent: { V: false, C: false, A: false },
+    system_admin: { V: false, C: false, A: false },
     external_verifier: { V: false, C: false, A: false },
   },
 };
@@ -175,6 +187,13 @@ export const hasPermission = (
   action: 'view' | 'control' | 'admin' | PermissionAction
 ): boolean => {
   if (!user) return false;
+
+  // Multi-school Directorate is strictly reserved for directorate_admin
+  if (resourceKey === 'multi_school_directorate' || resourceKey === 'directorate') {
+    return user.role === 'directorate_admin';
+  }
+
+  if (user.role === 'directorate_admin') return true;
   if (user.role === 'principal') return true;
 
   // Map simplified action names

@@ -34,6 +34,7 @@ export interface UserPermission {
   canLogViolations: boolean;        // تسجيل مخالفات السلامة والهروب
   canManageSocialCases?: boolean;   // إدارة ملفات ودراسة حالات الأخصائي الاجتماعي
   canAuditAssessments?: boolean;    // التحقق الداخلي لعينات الجدارات
+  canManageDirectorate?: boolean;   // إدارة المدارس المتعددة والرقابة المركزية بالمديرية
 }
 
 export interface User {

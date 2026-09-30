@@ -20,7 +20,14 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const users = getUsers();
+  const allUsers = getUsers();
+  // Ensure directorate_admin only appears if currentUser is directorate_admin
+  const users = allUsers.filter((u) => {
+    if (u.role === 'directorate_admin' && currentUser.role !== 'directorate_admin') {
+      return false;
+    }
+    return true;
+  });
 
   const getRoleIcon = (role: string) => {
     switch (role) {

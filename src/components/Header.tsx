@@ -293,15 +293,15 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-sm sm:text-base font-black text-white leading-normal truncate">
                 {schoolConfig.name}
               </h1>
-              {onOpenSchoolSwitcher && (
+              {onOpenSchoolSwitcher && currentUser.role === 'directorate_admin' && (
                 <button
                   type="button"
                   onClick={onOpenSchoolSwitcher}
-                  className="inline-flex items-center gap-1 text-[10.5px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40 font-bold shrink-0 transition cursor-pointer"
-                  title="تبديل المدرسة النشطة"
+                  className="inline-flex items-center gap-1 text-[10.5px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/40 font-bold shrink-0 transition cursor-pointer"
+                  title="تبديل المدرسة النشطة (خاص بمديرية التعليم الفني)"
                 >
                   <Building2 className="w-3 h-3 text-amber-400" />
-                  <span>تبديل المدرسة ⟲</span>
+                  <span>تبديل المدرسة (المديرية) ⟲</span>
                 </button>
               )}
               <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30 font-bold shrink-0">

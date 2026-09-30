@@ -216,6 +216,20 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       },
     });
 
+    if (currentUser.role === 'directorate_admin') {
+      list.push({
+        id: 'nav_directorate',
+        category: 'navigation',
+        title: 'لوحة قيادة المديرية والمدارس 🏛️',
+        subtitle: 'الإدارة المركزية والتحكم في شبكة المدارس الفنية',
+        icon: Building2,
+        perform: () => {
+          onNavigate('directorate');
+          onClose();
+        },
+      });
+    }
+
     return list;
   }, [currentUser, onNavigate, onClose, onOpenRoleSwitcher]);
 

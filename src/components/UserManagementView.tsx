@@ -90,6 +90,10 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   };
 
   const handleOpenEdit = (user: User) => {
+    if (user.role === 'directorate_admin' && currentUser.role !== 'directorate_admin') {
+      alert('لا تملك صلاحية تعديل حساب قيادة المديرية المركزية!');
+      return;
+    }
     setEditingUser(user);
     setFormName(user.name);
     setFormUsername(user.username);
@@ -130,42 +134,15 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canViewReports: true,
         canManageCompetencies: true,
         canLogViolations: true,
+        canManageSocialCases: true,
+        canAuditAssessments: true,
       });
     } else if (role === 'affairs_deputy') {
-      setFormRoleTitle('وكيل شئون الطلاب');
-      setFormPermissions({
-        canTakeAttendance: true,
-        canManageStudents: true,
-        canTransferStudents: true,
-        canApproveExcuses: true,
-        canIssueNotices: true,
-        canManageSchoolSettings: false,
-        canManageUsers: false,
-        canViewReports: true,
-        canManageCompetencies: true,
-        canLogViolations: true,
-      });
-    } else if (role === 'affairs_officer') {
-      setFormRoleTitle('مسئول شئون الطلاب');
-      setFormPermissions({
-        canTakeAttendance: true,
-        canManageStudents: true,
-        canTransferStudents: true,
-        canApproveExcuses: true,
-        canIssueNotices: true,
-        canManageSchoolSettings: false,
-        canManageUsers: false,
-        canViewReports: true,
-        canManageCompetencies: true,
-        canLogViolations: true,
-        canManageSocialCases: false,
-      });
-    } else if (role === 'social_worker') {
-      setFormRoleTitle('الأخصائي الاجتماعي والتربوي');
+      setFormRoleTitle('وكيل شئون الطلاب ولجنة الانضباط');
       setFormPermissions({
         canTakeAttendance: false,
         canManageStudents: true,
-        canTransferStudents: false,
+        canTransferStudents: true,
         canApproveExcuses: true,
         canIssueNotices: true,
         canManageSchoolSettings: false,
@@ -173,7 +150,40 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canViewReports: true,
         canManageCompetencies: false,
         canLogViolations: true,
+        canManageSocialCases: false,
+        canAuditAssessments: false,
+      });
+    } else if (role === 'affairs_officer') {
+      setFormRoleTitle('مسئول سجلات الطلاب والشيتات');
+      setFormPermissions({
+        canTakeAttendance: false,
+        canManageStudents: true,
+        canTransferStudents: false,
+        canApproveExcuses: false,
+        canIssueNotices: true,
+        canManageSchoolSettings: false,
+        canManageUsers: false,
+        canViewReports: true,
+        canManageCompetencies: false,
+        canLogViolations: false,
+        canManageSocialCases: false,
+        canAuditAssessments: false,
+      });
+    } else if (role === 'social_worker') {
+      setFormRoleTitle('الأخصائي الاجتماعي والتربوي');
+      setFormPermissions({
+        canTakeAttendance: false,
+        canManageStudents: true,
+        canTransferStudents: false,
+        canApproveExcuses: false,
+        canIssueNotices: false,
+        canManageSchoolSettings: false,
+        canManageUsers: false,
+        canViewReports: true,
+        canManageCompetencies: false,
+        canLogViolations: false,
         canManageSocialCases: true,
+        canAuditAssessments: false,
       });
     } else if (role === 'dept_head') {
       setFormRoleTitle('رئيس قسم صناعي');
@@ -189,6 +199,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canManageCompetencies: true,
         canLogViolations: true,
         canManageSocialCases: false,
+        canAuditAssessments: true,
       });
     } else if (role === 'external_verifier') {
       setFormRoleTitle('محقق خارجي / ممثل سوق العمل');
@@ -204,6 +215,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canManageCompetencies: true,
         canLogViolations: false,
         canManageSocialCases: false,
+        canAuditAssessments: true,
       });
     } else if (role === 'system_admin') {
       setFormRoleTitle('مسئول النظام التقني');
@@ -219,6 +231,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canManageCompetencies: true,
         canLogViolations: true,
         canManageSocialCases: true,
+        canAuditAssessments: true,
       });
     } else {
       setFormRoleTitle('معلم / مدرب ورشة');
@@ -234,6 +247,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         canManageCompetencies: true,
         canLogViolations: true,
         canManageSocialCases: false,
+        canAuditAssessments: false,
       });
     }
   };
@@ -270,6 +284,11 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       alert('لا يمكنك حذف الحساب المسجل به حالياً!');
       return;
     }
+    const targetUser = users.find((u) => u.id === userId);
+    if (targetUser?.role === 'directorate_admin' && currentUser.role !== 'directorate_admin') {
+      alert('لا تملك صلاحية حذف حساب قيادة المديرية المركزية!');
+      return;
+    }
     if (confirm(`هل أنت متأكد من حذف حساب (${name})؟`)) {
       deleteUser(userId);
       onUsersChanged();
@@ -278,6 +297,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
   const getRoleIcon = (role: string) => {
     switch (role) {
+      case 'directorate_admin':
+        return <Building2 className="w-5 h-5 text-amber-500" />;
       case 'principal':
         return <ShieldCheck className="w-5 h-5 text-emerald-600" />;
       case 'affairs_deputy':
@@ -292,6 +313,14 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         return <Wrench className="w-5 h-5 text-amber-600" />;
     }
   };
+
+  // Filter out Directorate Superintendent account for non-directorate users
+  const displayedUsers = users.filter((user) => {
+    if (currentUser.role !== 'directorate_admin' && user.role === 'directorate_admin') {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-4">
@@ -321,7 +350,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
       {/* Users Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {users.map((user) => {
+        {displayedUsers.map((user) => {
           const isMe = user.id === currentUser.id;
           const userDept = departments.find((d) => d.id === user.departmentId);
 

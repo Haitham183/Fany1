@@ -404,12 +404,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'الإدارة والنظام',
       items: [
         {
-          id: 'directorate',
-          label: 'إدارة المدارس والمديرية',
-          icon: School,
-          visible: role === 'principal' || role === 'system_admin',
-        },
-        {
           id: 'settings',
           label: 'إعدادات المدرسة والقواعد',
           icon: Sliders,
