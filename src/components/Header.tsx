@@ -191,6 +191,8 @@ export const Header: React.FC<HeaderProps> = ({
         };
       case 'principal':
         return { label: 'مدير المدرسة', bg: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+      case 'system_admin':
+        return { label: 'مدير تقني 💻', bg: 'bg-slate-100 text-slate-800 border-slate-300' };
       case 'affairs_deputy':
         return { label: 'وكيل شئون الطلاب', bg: 'bg-indigo-100 text-indigo-800 border-indigo-300' };
       case 'affairs_officer':
@@ -344,6 +346,20 @@ export const Header: React.FC<HeaderProps> = ({
                   </p>
                 </>
               )
+            ) : currentUser.role === 'system_admin' ? (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-sm sm:text-base font-black text-white leading-normal truncate">
+                    إدارة المنظومة والتشغيل التقني
+                  </h1>
+                  <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-bold shrink-0">
+                    <Sliders className="w-3 h-3 text-cyan-400" /> مدير تقني
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 truncate">
+                  إدارة حسابات المستخدمين، الخوادم، والنسخ الاحتياطي
+                </p>
+              </>
             ) : (
               <>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -664,18 +680,6 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
           </button>
-
-          {/* Admin Master Dashboard Link Button (Visible to Principal) */}
-          {(currentUser.role === 'principal' || currentUser.customPermissions?.canManageSchoolSettings) && (
-            <Link
-              href="/admin"
-              className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
-              title="فتح لوحة تحكم الأدمن المركزية"
-            >
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span className="hidden md:inline">لوحة الأدمن</span>
-            </Link>
-          )}
         </div>
       </div>
     </header>

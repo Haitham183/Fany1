@@ -321,9 +321,9 @@ export function canRoleAccessTab(role: UserRole, tab: CanonicalTabId): boolean {
     return role === 'directorate_admin';
   }
 
-  // Directorate admin has access to view any school's administrative and reporting data
+  // Directorate admin has access to view any school's administrative and reporting data, but not local school settings or daily operational tools
   if (role === 'directorate_admin') {
-    const forbiddenForDirectorate: CanonicalTabId[] = ['attendance', 'transfers', 'social_portal'];
+    const forbiddenForDirectorate: CanonicalTabId[] = ['attendance', 'transfers', 'social_portal', 'settings'];
     return !forbiddenForDirectorate.includes(tab);
   }
 

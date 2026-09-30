@@ -196,7 +196,25 @@ export const initializeData = () => {
   if (!localStorage.getItem(STORAGE_KEYS.NOTICES)) {
     localStorage.setItem(STORAGE_KEYS.NOTICES, JSON.stringify(isProduction ? [] : MOCK_NOTICES));
   }
-  if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
+  // Self-heal legacy contaminated session in localStorage
+  try {
+    const rawCurrentUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    if (rawCurrentUser) {
+      const parsed = JSON.parse(rawCurrentUser);
+      if (
+        parsed.username === 'directorate' ||
+        parsed.id === 'user_directorate' ||
+        (parsed.name && parsed.name.includes('حسام الدين')) ||
+        parsed.role === 'system_admin'
+      ) {
+        if (parsed.role !== 'directorate_admin') {
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(MOCK_USERS[0]));
+        }
+      }
+    } else {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(MOCK_USERS[0]));
+    }
+  } catch {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(MOCK_USERS[0]));
   }
   if (!localStorage.getItem(STORAGE_KEYS.CONFIG)) {
@@ -438,25 +456,73 @@ export const deleteInspectionReport = (id: string): void => {
 // Getters
 // =========================================================================
 
-export const getCurrentUser = (): User => getStoredData(STORAGE_KEYS.CURRENT_USER, MOCK_USERS[0]);
+export const getCurrentUser = (): User => {
+  const user = getStoredData<User>(STORAGE_KEYS.CURRENT_USER, MOCK_USERS[0]);
+  // Self-heal legacy contaminated directorate session
+  if (
+    !user ||
+    user.username === 'directorate' ||
+    user.id === 'user_directorate' ||
+    (user.name && user.name.includes('حسام الدين')) ||
+    user.role === 'system_admin'
+  ) {
+    if (!user || user.role !== 'directorate_admin' || user.username !== 'directorate') {
+      const canonical = MOCK_USERS[0];
+      setCurrentUser(canonical);
+      return canonical;
+    }
+  }
+  return user;
+};
+
 export const getUsers = (): User[] => {
   const users = getStoredData<User[]>(STORAGE_KEYS.USERS, MOCK_USERS);
-  // Ensure default essential accounts (especially directorate_admin) always exist
-  const existingUsernames = new Set(users.map((u) => u.username.toLowerCase().trim()));
   let modified = false;
-  const merged = [...users];
 
+  const updatedUsers = users.map((u) => {
+    // If directorate account was contaminated with system_admin or wrong role
+    if (
+      u.username.toLowerCase().trim() === 'directorate' ||
+      u.id === 'user_directorate' ||
+      (u.name && u.name.includes('حسام الدين عبد القادر'))
+    ) {
+      const canonical = MOCK_USERS[0];
+      if (u.role !== 'directorate_admin' || u.roleTitle !== canonical.roleTitle) {
+        modified = true;
+        return {
+          ...u,
+          ...canonical,
+          role: 'directorate_admin' as const,
+          roleTitle: canonical.roleTitle,
+          schoolId: 'all',
+        };
+      }
+    }
+
+    if (u.username.toLowerCase().trim() === 'admin' && u.role !== 'principal') {
+      modified = true;
+      return {
+        ...u,
+        role: 'principal' as const,
+        roleTitle: 'مدير عام المدرسة الصناعية / القائد التنفيذي',
+      };
+    }
+
+    return u;
+  });
+
+  const existingUsernames = new Set(updatedUsers.map((u) => u.username.toLowerCase().trim()));
   MOCK_USERS.forEach((mockUser) => {
     if (!existingUsernames.has(mockUser.username.toLowerCase().trim())) {
-      merged.push(mockUser);
+      updatedUsers.push(mockUser);
       modified = true;
     }
   });
 
   if (modified) {
-    setStoredData(STORAGE_KEYS.USERS, merged);
+    setStoredData(STORAGE_KEYS.USERS, updatedUsers);
   }
-  return merged;
+  return updatedUsers;
 };
 
 export const getStudents = (): Student[] => {
@@ -1015,8 +1081,21 @@ export const deleteAssessmentCalendarEvent = (eventId: string) => {
 // =========================================================================
 
 export const login = (username: string, password?: string): { success: boolean; user?: User; error?: string } => {
+  const cleanUsername = username.toLowerCase().trim();
+
+  // Guarantee directorate login always resolves cleanly to directorate_admin
+  if (cleanUsername === 'directorate') {
+    if (password && password.trim() !== '123') {
+      return { success: false, error: 'كلمة المرور غير صحيحة' };
+    }
+    const directorateUser = MOCK_USERS[0];
+    setCurrentUser(directorateUser);
+    setStoredData(STORAGE_KEYS.IS_AUTHENTICATED, true);
+    return { success: true, user: directorateUser };
+  }
+
   const users = getUsers();
-  const user = users.find((u) => u.username.toLowerCase() === username.toLowerCase().trim());
+  const user = users.find((u) => u.username.toLowerCase() === cleanUsername);
   if (!user) return { success: false, error: 'اسم المستخدم غير موجود' };
   if (user.password && password && user.password !== password.trim()) return { success: false, error: 'كلمة المرور غير صحيحة' };
 

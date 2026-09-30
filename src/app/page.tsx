@@ -87,7 +87,17 @@ function MainAppContent() {
   const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
   const [inspectingSchool, setInspectingSchool] = useState<SchoolTenant | null>(null);
 
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const u = getCurrentUser();
+        return getDefaultTabForRole(u?.role || 'principal');
+      } catch {
+        return 'dashboard';
+      }
+    }
+    return 'dashboard';
+  });
   const [selectedReportStudentId, setSelectedReportStudentId] = useState<string | undefined>(undefined);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState<boolean>(false);
   const [isSchoolSwitcherOpen, setIsSchoolSwitcherOpen] = useState<boolean>(false);
@@ -158,6 +168,20 @@ function MainAppContent() {
     initializeData();
     refreshAllData();
 
+    // Guard: Align activeTab strictly with authorized role landing upon boot or refresh
+    const initialUser = getCurrentUser();
+    setActiveTab((prev) => {
+      if (initialUser.role === 'directorate_admin' && !inspectingSchool) {
+        if (!prev.startsWith('directorate')) {
+          return 'directorate';
+        }
+      }
+      if (!canRoleAccessTab(initialUser.role, normalizeTabId(prev))) {
+        return getDefaultTabForRole(initialUser.role);
+      }
+      return prev;
+    });
+
     // 1. Initialize PWA Offline Engine & Sync Queue Listeners
     initOfflineSyncEngine();
 
@@ -190,8 +214,14 @@ function MainAppContent() {
     };
   }, []);
 
-  const handleNavigate = (rawTab: string) => {
+  const handleNavigate = (
+    rawTab: string,
+    overrideInspectingSchool?: SchoolTenant | null,
+    overrideUser?: User
+  ) => {
     let normalized = normalizeTabId(rawTab);
+    const activeInspection = overrideInspectingSchool !== undefined ? overrideInspectingSchool : inspectingSchool;
+    const effectiveUser = overrideUser || currentUser;
 
     // If navigating back to central directorate command windows, exit inspection mode
     if (
@@ -207,9 +237,14 @@ function MainAppContent() {
       }
     }
 
+    // Directorate admin without inspecting school should NEVER open single school tabs
+    if (effectiveUser.role === 'directorate_admin' && !activeInspection && !normalized.startsWith('directorate')) {
+      normalized = 'directorate';
+    }
+
     // Strictly validate if the user's role is authorized to open this tab
-    if (!canRoleAccessTab(currentUser.role, normalized)) {
-      normalized = getDefaultTabForRole(currentUser.role);
+    if (!canRoleAccessTab(effectiveUser.role, normalized)) {
+      normalized = getDefaultTabForRole(effectiveUser.role);
     }
 
     setActiveTab(normalized);
@@ -226,19 +261,19 @@ function MainAppContent() {
     setCurrentUserState(user);
 
     if (user.role === 'directorate_admin') {
-      handleNavigate('directorate');
+      handleNavigate('directorate', null, user);
     } else if (user.role === 'teacher') {
-      handleNavigate('attendance');
+      handleNavigate('attendance', null, user);
     } else if (user.role === 'dept_head') {
-      handleNavigate('departments');
+      handleNavigate('departments', null, user);
     } else if (user.role === 'external_verifier' || !!user.isInternalVerifier) {
-      handleNavigate('competencies');
+      handleNavigate('competencies', null, user);
     } else if (user.role === 'social_worker') {
-      handleNavigate('social_portal');
+      handleNavigate('social_portal', null, user);
     } else if (user.role === 'affairs_deputy' || user.role === 'affairs_officer') {
-      handleNavigate('affairs');
+      handleNavigate('affairs', null, user);
     } else {
-      handleNavigate('dashboard');
+      handleNavigate('dashboard', null, user);
     }
   };
 
@@ -266,19 +301,19 @@ function MainAppContent() {
     setIsParentPortalOpen(false);
 
     if (portal === 'directorate' || user.role === 'directorate_admin') {
-      handleNavigate('directorate');
+      handleNavigate('directorate', null, user);
     } else if (portal === 'teacher' || user.role === 'teacher') {
-      handleNavigate('attendance');
+      handleNavigate('attendance', null, user);
     } else if (portal === 'dept_head' || user.role === 'dept_head') {
-      handleNavigate('departments');
+      handleNavigate('departments', null, user);
     } else if (portal === 'competencies' || !!user.isInternalVerifier) {
-      handleNavigate('competencies');
+      handleNavigate('competencies', null, user);
     } else if (portal === 'social_worker' || user.role === 'social_worker') {
-      handleNavigate('social_portal');
+      handleNavigate('social_portal', null, user);
     } else if (portal === 'affairs' || user.role === 'affairs_deputy' || user.role === 'affairs_officer') {
-      handleNavigate('affairs');
+      handleNavigate('affairs', null, user);
     } else {
-      handleNavigate('dashboard');
+      handleNavigate('dashboard', null, user);
     }
   };
 
@@ -423,7 +458,7 @@ function MainAppContent() {
                   setActiveSchoolId(schoolId);
                   setInspectingSchool(target);
                   refreshAllData();
-                  handleNavigate('dashboard');
+                  handleNavigate('dashboard', target);
                 }}
               />
             )}

@@ -115,6 +115,19 @@ describe('Role-Based Tab Access (canRoleAccessTab & getDefaultTabForRole)', () =
     }
   });
 
+  it('enforces boundaries for directorate_admin forbidding school settings and operational tabs', () => {
+    // Directorate admin cannot access local school settings or daily operational tabs
+    expect(canRoleAccessTab('directorate_admin', 'settings')).toBe(false);
+    expect(canRoleAccessTab('directorate_admin', 'attendance')).toBe(false);
+    expect(canRoleAccessTab('directorate_admin', 'transfers')).toBe(false);
+    expect(canRoleAccessTab('directorate_admin', 'social_portal')).toBe(false);
+
+    // Directorate admin can inspect school-wide reporting when needed
+    expect(canRoleAccessTab('directorate_admin', 'dashboard')).toBe(true);
+    expect(canRoleAccessTab('directorate_admin', 'official_sheets')).toBe(true);
+    expect(canRoleAccessTab('directorate_admin', 'departments')).toBe(true);
+  });
+
   it('enforces zero-leak boundary for external verifiers', () => {
     expect(canRoleAccessTab('external_verifier', 'competencies')).toBe(true);
     expect(canRoleAccessTab('external_verifier', 'departments')).toBe(true);
