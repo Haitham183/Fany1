@@ -87,16 +87,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // 0. DIRECTORATE ADMIN MENU (Super Admin / Directorate Level)
     if (role === 'directorate_admin') {
       list.push({
-        title: 'قيادة المديرية والمدارس',
+        title: 'القيادة المركزية والتحكم في المدارس',
         items: [
           {
             id: 'directorate',
-            label: 'لوحة قيادة المديرية والمدارس 🏛️',
+            label: 'كابينة تحكم المديرية المركزية 🏛️',
             icon: School,
             badge: 'مركزي',
-            badgeColor: 'bg-amber-500 text-white',
+            badgeColor: 'bg-amber-500 text-slate-950 font-bold',
             visible: true,
           },
+          {
+            id: 'directorate_schools',
+            label: 'شبكة وإدارة المدارس الفنية',
+            icon: Building2,
+            visible: true,
+          },
+          {
+            id: 'directorate_competencies',
+            label: 'رقابة الجدارات ونسب الورش 85%',
+            icon: Award,
+            visible: true,
+          },
+          {
+            id: 'directorate_attendance',
+            label: 'مرصد الغياب ومواظبة 5',
+            icon: TrendingUp,
+            visible: true,
+          },
+          {
+            id: 'directorate_circulars',
+            label: 'القرارات والكتب الدورية للمدارس',
+            icon: FileText,
+            visible: true,
+          },
+          {
+            id: 'directorate_inspection',
+            label: 'سجل التفتيش والمتابعة الميدانية',
+            icon: ShieldAlert,
+            visible: true,
+          },
+        ],
+      });
+
+      list.push({
+        title: 'معاينة سجلات المدرسة المحددة',
+        items: [
           {
             id: 'dashboard',
             label: 'لوحة المدرسة النشطة',
@@ -105,38 +141,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           },
           {
             id: 'census',
-            label: 'الإحصاء التراكمي (5 مواظبة)',
+            label: 'إحصاء 5 مواظبة للمدرسة',
             icon: TrendingUp,
             visible: true,
           },
           {
             id: 'competencies',
-            label: 'منظومة الجدارات الموحدة (CBE)',
+            label: 'جدارات المدرسة النشطة',
             icon: Award,
             visible: true,
           },
           {
             id: 'official_sheets',
-            label: 'دفاتر 41 وسر 1 للمدارس',
+            label: 'شيتات 41 وسر 1 للمدرسة',
             icon: FileText,
-            visible: true,
-          },
-        ],
-      });
-
-      list.push({
-        title: 'الرقابة وإدارة النظام',
-        items: [
-          {
-            id: 'users',
-            label: 'حسابات مديري المدارس والفرق',
-            icon: UserCheck,
-            visible: true,
-          },
-          {
-            id: 'settings',
-            label: 'الإعدادات والقواعد العامة',
-            icon: Sliders,
             visible: true,
           },
         ],
@@ -263,14 +281,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return list;
     }
 
-    // 4. AFFAIRS DEPUTY / OFFICER (Focused on Students, Notices Law 139, Census, Sheets)
-    if (role === 'affairs_deputy' || role === 'affairs_officer') {
+    // 4. EXTERNAL VERIFIER MENU (Audit CBE, Workshops 85%, Sampling)
+    if (role === 'external_verifier') {
+      list.push({
+        title: 'مهام المحقق والتحقق المهني',
+        items: [
+          {
+            id: 'competencies',
+            label: 'مصفوفة الجدارات والتحقق الخارجي',
+            icon: Award,
+            badge: 'تدقيق',
+            badgeColor: 'bg-purple-600 text-white',
+            visible: true,
+          },
+          {
+            id: 'departments',
+            label: 'تفقد ورش ومعامل التخصصات',
+            icon: Building2,
+            visible: true,
+          },
+          {
+            id: 'dashboard',
+            label: 'لوحة تدقيق العينات والمؤشرات',
+            icon: LayoutDashboard,
+            visible: true,
+          },
+        ],
+      });
+      return list;
+    }
+
+    // 5. AFFAIRS DEPUTY (Discipline Committee, Article 25, Expulsions, Transfers, Census)
+    if (role === 'affairs_deputy') {
       list.push({
         title: 'الانضباط والمادة 25',
         items: [
           {
             id: 'dashboard',
-            label: 'لوحة شئون الطلاب',
+            label: 'لوحة وكيل شئون الطلاب',
             icon: LayoutDashboard,
             visible: true,
           },
@@ -280,6 +328,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             icon: ShieldAlert,
             badge: noticesCount > 0 ? noticesCount : null,
             badgeColor: 'bg-red-600 text-white',
+            visible: true,
+          },
+          {
+            id: 'transfers',
+            label: 'اعتماد تحويلات ونقل الطلاب',
+            icon: ArrowRightLeft,
             visible: true,
           },
           {
@@ -313,9 +367,63 @@ export const Sidebar: React.FC<SidebarProps> = ({
             visible: true,
           },
           {
-            id: 'transfers',
-            label: 'سجل التحويلات والنقل',
-            icon: ArrowRightLeft,
+            id: 'student_report',
+            label: 'ملف الطالب والشهادات',
+            icon: GraduationCap,
+            visible: true,
+          },
+        ],
+      });
+      return list;
+    }
+
+    // 6. AFFAIRS OFFICER (Register 41, Sheet 1 Ser, Census, Drafting Notices)
+    if (role === 'affairs_officer') {
+      list.push({
+        title: 'السجلات والشيتات الوزارية',
+        items: [
+          {
+            id: 'dashboard',
+            label: 'لوحة مسئول الشيتات والسجلات',
+            icon: LayoutDashboard,
+            visible: true,
+          },
+          {
+            id: 'official_sheets',
+            label: 'دفتر 41 وشيتات سر 1 وسجل 5',
+            icon: FileText,
+            visible: true,
+          },
+          {
+            id: 'census',
+            label: 'الإحصاء الصباحي (5 مواظبة)',
+            icon: TrendingUp,
+            visible: true,
+          },
+          {
+            id: 'notices',
+            label: 'مسودات الإنذارات والمراسلات',
+            icon: ShieldAlert,
+            badge: noticesCount > 0 ? noticesCount : null,
+            badgeColor: 'bg-red-600 text-white',
+            visible: true,
+          },
+        ],
+      });
+
+      list.push({
+        title: 'قيد وبحث الطلاب',
+        items: [
+          {
+            id: 'affairs',
+            label: 'سجل وبيانات الطلاب',
+            icon: Users,
+            visible: true,
+          },
+          {
+            id: 'class_rosters',
+            label: 'قوائم الفصول المعتمدة',
+            icon: BookOpen,
             visible: true,
           },
           {
@@ -329,7 +437,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return list;
     }
 
-    // 5. PRINCIPAL & ADMIN (Full Executive Control & System Hub)
+    // 7. SYSTEM ADMIN (IT Setup, Users, Settings)
+    if (role === 'system_admin') {
+      list.push({
+        title: 'إدارة النظام التقني',
+        items: [
+          {
+            id: 'dashboard',
+            label: 'لوحة تحكم النظام التقني',
+            icon: LayoutDashboard,
+            visible: true,
+          },
+          {
+            id: 'users',
+            label: 'حسابات فريق العمل والصلاحيات',
+            icon: UserCheck,
+            visible: true,
+          },
+          {
+            id: 'settings',
+            label: 'إعدادات المنظومة وهوية المدرسة',
+            icon: Sliders,
+            visible: true,
+          },
+        ],
+      });
+      return list;
+    }
+
+    // 8. PRINCIPAL (Full School Executive Leadership)
     list.push({
       title: 'مركز القيادة والمتابعة',
       items: [

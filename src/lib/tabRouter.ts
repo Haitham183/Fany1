@@ -1,3 +1,5 @@
+import { UserRole } from '@/types';
+
 /**
  * Centralized Tab Router & Alias Normalizer for the Egyptian TVET School Management System
  * Guarantees that all links, buttons, shortcuts, and notifications route seamlessly.
@@ -21,6 +23,11 @@ export type CanonicalTabId =
   | 'settings'
   | 'users'
   | 'directorate'
+  | 'directorate_schools'
+  | 'directorate_competencies'
+  | 'directorate_attendance'
+  | 'directorate_circulars'
+  | 'directorate_inspection'
   | 'parent_portal';
 
 export function normalizeTabId(rawTab: string): CanonicalTabId {
@@ -165,11 +172,36 @@ export function normalizeTabId(rawTab: string): CanonicalTabId {
 
     // 18. Directorate & Multi-School Management
     case 'directorate':
-    case 'schools':
-    case 'schools_management':
+    case 'directorate_cockpit':
     case 'multi_school':
     case 'super_admin':
       return 'directorate';
+
+    case 'directorate_schools':
+    case 'schools':
+    case 'schools_management':
+    case 'schools_network':
+      return 'directorate_schools';
+
+    case 'directorate_competencies':
+    case 'directorate_cbe':
+    case 'directorate_workshop_rate':
+      return 'directorate_competencies';
+
+    case 'directorate_attendance':
+    case 'directorate_census':
+    case 'directorate_dropout':
+      return 'directorate_attendance';
+
+    case 'directorate_circulars':
+    case 'circulars':
+    case 'directives':
+      return 'directorate_circulars';
+
+    case 'directorate_inspection':
+    case 'inspection':
+    case 'inspection_reports':
+      return 'directorate_inspection';
 
     default:
       return 'dashboard';
@@ -242,11 +274,156 @@ export const TAB_META: Record<CanonicalTabId, { label: string; description: stri
     description: 'إدارة الكادر التعليمي والإداري وتعيين الأدوار الفنية',
   },
   directorate: {
-    label: 'المديرية والمدارس الفنية',
-    description: 'إدارة شبكة المدارس الفنية الصناعية ولوحة المؤشرات المجمعة',
+    label: 'كابينة قيادة المديرية المركزية',
+    description: 'لوحة المؤشرات المجمعة لمدارس المحافظة الفنية الصناعية',
+  },
+  directorate_schools: {
+    label: 'شبكة وإدارة المدارس الفنية',
+    description: 'إدارة شبكة المدارس بالمحافظة، إضافة مدرسة، وتعيين بيانات الاعتماد',
+  },
+  directorate_competencies: {
+    label: 'رقابة الجدارات ونسب الورش 85%',
+    description: 'متابعة التزام مدارس المحافظة بحد الـ 85% لحضور الورش واجتياز الجدارات',
+  },
+  directorate_attendance: {
+    label: 'مرصد الغياب ومواظبة 5',
+    description: 'الإحصاء التراكمي الصباحي لمدارس المحافظة ومؤشر التسرب والإنذارات',
+  },
+  directorate_circulars: {
+    label: 'القرارات والكتب الدورية',
+    description: 'إصدار وتعميم التوجيهات والقرارات الوزارية على مدارس المحافظة',
+  },
+  directorate_inspection: {
+    label: 'سجل التفتيش والمتابعة الميدانية',
+    description: 'توثيق تقارير لجان المتابعة الميدانية والسلامة والصحة المهنية بالورش',
   },
   parent_portal: {
     label: 'بوابة ولي الأمر',
     description: 'متابعة الأبناء والإنذارات وغياب الورش من الهاتف',
   },
 };
+
+/**
+ * Validates whether a specific role has permission to open and view a canonical tab.
+ */
+export function canRoleAccessTab(role: UserRole, tab: CanonicalTabId): boolean {
+  // Directorate tabs are strictly reserved for directorate_admin
+  const directorateTabs: CanonicalTabId[] = [
+    'directorate',
+    'directorate_schools',
+    'directorate_competencies',
+    'directorate_attendance',
+    'directorate_circulars',
+    'directorate_inspection',
+  ];
+
+  if (directorateTabs.includes(tab)) {
+    return role === 'directorate_admin';
+  }
+
+  // Directorate admin has access to view any school's administrative and reporting data
+  if (role === 'directorate_admin') {
+    const forbiddenForDirectorate: CanonicalTabId[] = ['attendance', 'transfers', 'social_portal'];
+    return !forbiddenForDirectorate.includes(tab);
+  }
+
+  switch (role) {
+    case 'principal':
+      // Full executive access to single school
+      return true;
+
+    case 'system_admin':
+      return ['dashboard', 'users', 'settings'].includes(tab);
+
+    case 'affairs_deputy':
+      return [
+        'dashboard',
+        'notices',
+        'transfers',
+        'census',
+        'official_sheets',
+        'affairs',
+        'class_rosters',
+        'student_report',
+      ].includes(tab);
+
+    case 'affairs_officer':
+      return [
+        'dashboard',
+        'official_sheets',
+        'census',
+        'affairs',
+        'class_rosters',
+        'student_report',
+        'notices',
+      ].includes(tab);
+
+    case 'dept_head':
+      return [
+        'dashboard',
+        'departments',
+        'competencies',
+        'safety',
+        'class_rosters',
+        'attendance',
+      ].includes(tab);
+
+    case 'teacher':
+      return [
+        'dashboard',
+        'attendance',
+        'competencies',
+        'class_rosters',
+        'safety',
+      ].includes(tab);
+
+    case 'social_worker':
+      return [
+        'dashboard',
+        'social_portal',
+        'ai_prediction',
+        'safety',
+        'student_report',
+      ].includes(tab);
+
+    case 'external_verifier':
+      return [
+        'dashboard',
+        'competencies',
+        'departments',
+      ].includes(tab);
+
+    case 'parent':
+      return ['parent_portal', 'dashboard'].includes(tab);
+
+    default:
+      return ['dashboard'].includes(tab);
+  }
+}
+
+/**
+ * Provides the default canonical landing tab for a given role upon login.
+ */
+export function getDefaultTabForRole(role: UserRole): CanonicalTabId {
+  switch (role) {
+    case 'directorate_admin':
+      return 'directorate';
+    case 'teacher':
+      return 'attendance';
+    case 'dept_head':
+      return 'departments';
+    case 'external_verifier':
+      return 'competencies';
+    case 'social_worker':
+      return 'social_portal';
+    case 'affairs_deputy':
+    case 'affairs_officer':
+      return 'affairs';
+    case 'parent':
+      return 'parent_portal';
+    case 'principal':
+    case 'system_admin':
+    default:
+      return 'dashboard';
+  }
+}

@@ -106,6 +106,40 @@ export interface SchoolTenant {
   updatedAt?: string;
 }
 
+// الكتب الدورية والقرارات الصادرة من قيادة المديرية للمدارس الفنية
+export interface DirectorateCircular {
+  id: string;
+  circularNumber: string;        // e.g. "ك/د-2026/14"
+  title: string;                 // e.g. "ضوابط استيفاء نسبة حضور الورش 85% لدخول التقييم النهائي"
+  subject: 'cbe' | 'safety' | 'attendance' | 'general' | 'exams';
+  content: string;               // نص القرار أو التوجيه
+  issuedDate: string;            // YYYY-MM-DD
+  priority: 'normal' | 'high' | 'urgent';
+  targetScope: 'all' | 'specific_school' | '5_years_only' | 'applied_tech_only';
+  targetSchoolId?: string;
+  targetSchoolName?: string;
+  acknowledgedBySchoolIds?: string[]; // معرّفات المدارس التي أكدت قراءة واستلام القرار
+  issuedBy: string;              // "د. حسام الدين عبد القادر - مدير عام التعليم الفني"
+}
+
+// تقارير زيارات التفتيش والمتابعة الميدانية للمدارس الفنية بالمديرية
+export interface SchoolInspectionReport {
+  id: string;
+  reportNumber: string;          // e.g. "تفتيش-2026/89"
+  schoolId: string;
+  schoolName: string;
+  inspectorName: string;         // اسم رئيس لجنة المتابعة والتفتيش
+  visitDate: string;             // YYYY-MM-DD
+  departmentInspected?: string;  // القسم / الورشة التي تم التفتيش عليها
+  disciplineRating: 'excellent' | 'good' | 'needs_improvement' | 'critical';
+  ppeComplianceRating: 'compliant' | 'partial' | 'non_compliant'; // مهمات الوقاية بالورش
+  competencyAuditStatus: 'verified' | 'pending_samples' | 'deficiencies_found';
+  workshopAttendanceRate: number;// e.g. 88%
+  notes: string;                 // ملاحظات اللجنة الميدانية
+  recommendations: string;       // التوصيات والإجراءات الملزمة
+  status: 'pending_school_action' | 'resolved' | 'escalated_to_undersecretary';
+}
+
 // إعدادات المدرسة والقواعد القانونية القابلة للضبط [قابل للضبط]
 export interface SchoolConfig {
   id?: string;

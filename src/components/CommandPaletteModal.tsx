@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Student, SchoolClass, Department, User, UserRole } from '@/types';
+import { canRoleAccessTab } from '@/lib/tabRouter';
 import {
   Search,
   Users,
@@ -81,67 +82,77 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     const list: CommandAction[] = [];
 
     // Quick Actions
-    list.push({
-      id: 'action_attendance',
-      category: 'actions',
-      title: 'رصد حضور وغياب ورشة اليوم',
-      subtitle: 'تسجيل سريع لحضور الطلاب والورش العملية',
-      icon: Wrench,
-      shortcut: 'Alt + A',
-      perform: () => {
-        onNavigate('attendance');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'attendance')) {
+      list.push({
+        id: 'action_attendance',
+        category: 'actions',
+        title: 'رصد حضور وغياب ورشة اليوم',
+        subtitle: 'تسجيل سريع لحضور الطلاب والورش العملية',
+        icon: Wrench,
+        shortcut: 'Alt + A',
+        perform: () => {
+          onNavigate('attendance');
+          onClose();
+        },
+      });
+    }
 
-    list.push({
-      id: 'action_competencies',
-      category: 'actions',
-      title: 'تقييم مخرجات الجدارات (CBE)',
-      subtitle: 'رصد بطاقات الملاحظة وفحص المنتج وسحب عينات التحقق',
-      icon: Award,
-      perform: () => {
-        onNavigate('competencies');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'competencies')) {
+      list.push({
+        id: 'action_competencies',
+        category: 'actions',
+        title: 'تقييم مخرجات الجدارات (CBE)',
+        subtitle: 'رصد بطاقات الملاحظة وفحص المنتج وسحب عينات التحقق',
+        icon: Award,
+        perform: () => {
+          onNavigate('competencies');
+          onClose();
+        },
+      });
+    }
 
-    list.push({
-      id: 'action_census',
-      category: 'actions',
-      title: 'الإحصاء الصباحي وسجل 5 مواظبة',
-      subtitle: 'مطابقة القوة الصباحية وتصدير الإحصاء للإدارة',
-      icon: TrendingUp,
-      perform: () => {
-        onNavigate('census');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'census')) {
+      list.push({
+        id: 'action_census',
+        category: 'actions',
+        title: 'الإحصاء الصباحي وسجل 5 مواظبة',
+        subtitle: 'مطابقة القوة الصباحية وتصدير الإحصاء للإدارة',
+        icon: TrendingUp,
+        perform: () => {
+          onNavigate('census');
+          onClose();
+        },
+      });
+    }
 
-    list.push({
-      id: 'action_notices',
-      category: 'actions',
-      title: 'إصدار ومتابعة الإنذارات وقرارات الفصل (مادة 25)',
-      subtitle: 'نماذج الإنذار الأول والثاني والبريد المسجل',
-      icon: ShieldAlert,
-      perform: () => {
-        onNavigate('notices');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'notices')) {
+      list.push({
+        id: 'action_notices',
+        category: 'actions',
+        title: 'إصدار ومتابعة الإنذارات وقرارات الفصل (مادة 25)',
+        subtitle: 'نماذج الإنذار الأول والثاني والبريد المسجل',
+        icon: ShieldAlert,
+        perform: () => {
+          onNavigate('notices');
+          onClose();
+        },
+      });
+    }
 
-    list.push({
-      id: 'action_ai',
-      category: 'actions',
-      title: 'التنبؤ الذكي بالتسرب والرسوب (AI)',
-      subtitle: 'كشف مبكر للطلاب المعرضين للرسوب والحرمان',
-      icon: Sparkles,
-      badge: 'AI ✨',
-      perform: () => {
-        onNavigate('ai_prediction');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'ai_prediction')) {
+      list.push({
+        id: 'action_ai',
+        category: 'actions',
+        title: 'التنبؤ الذكي بالتسرب والرسوب (AI)',
+        subtitle: 'كشف مبكر للطلاب المعرضين للرسوب والحرمان',
+        icon: Sparkles,
+        badge: 'AI ✨',
+        perform: () => {
+          onNavigate('ai_prediction');
+          onClose();
+        },
+      });
+    }
 
     list.push({
       id: 'action_role_switch',
@@ -155,72 +166,82 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       },
     });
 
-    // Navigation Pages
-    list.push({
-      id: 'nav_dashboard',
-      category: 'navigation',
-      title: 'لوحة القيادة والمتابعة الرئيسية',
-      subtitle: 'الرئيسية',
-      icon: Users,
-      perform: () => {
-        onNavigate('dashboard');
-        onClose();
-      },
-    });
+    // Navigation Pages (Strictly Filtered by Role Access)
+    if (canRoleAccessTab(currentUser.role, 'dashboard')) {
+      list.push({
+        id: 'nav_dashboard',
+        category: 'navigation',
+        title: 'لوحة القيادة والمتابعة الرئيسية',
+        subtitle: 'الرئيسية',
+        icon: Users,
+        perform: () => {
+          onNavigate('dashboard');
+          onClose();
+        },
+      });
+    }
 
-    list.push({
-      id: 'nav_affairs',
-      category: 'navigation',
-      title: 'سجل شئون الطلاب والملفات',
-      subtitle: 'بيانات الطلاب والقيد والتحويلات',
-      icon: FileText,
-      perform: () => {
-        onNavigate('affairs');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'affairs')) {
+      list.push({
+        id: 'nav_affairs',
+        category: 'navigation',
+        title: 'سجل شئون الطلاب والملفات',
+        subtitle: 'بيانات الطلاب والقيد والتحويلات',
+        icon: FileText,
+        perform: () => {
+          onNavigate('affairs');
+          onClose();
+        },
+      });
+    }
 
-    list.push({
-      id: 'nav_departments',
-      category: 'navigation',
-      title: 'الأقسام الصناعية والتخصصية',
-      subtitle: 'متابعة ورش الأقسام والخطط الدراسية',
-      icon: Building2,
-      perform: () => {
-        onNavigate('departments');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'departments')) {
+      list.push({
+        id: 'nav_departments',
+        category: 'navigation',
+        title: 'الأقسام الصناعية والتخصصية',
+        subtitle: 'متابعة ورش الأقسام والخطط الدراسية',
+        icon: Building2,
+        perform: () => {
+          onNavigate('departments');
+          onClose();
+        },
+      });
+    }
 
-    list.push({
-      id: 'nav_safety',
-      category: 'navigation',
-      title: 'سجل السلامة المهنية ومخالفات الورش',
-      subtitle: 'مهمات الوقاية وحالات التزويغ',
-      icon: ShieldAlert,
-      perform: () => {
-        onNavigate('safety');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'safety')) {
+      list.push({
+        id: 'nav_safety',
+        category: 'navigation',
+        title: 'سجل السلامة المهنية ومخالفات الورش',
+        subtitle: 'مهمات الوقاية وحالات التزويغ',
+        icon: ShieldAlert,
+        perform: () => {
+          onNavigate('safety');
+          onClose();
+        },
+      });
+    }
 
-    list.push({
-      id: 'nav_settings',
-      category: 'navigation',
-      title: 'إعدادات المنظومة والقواعد القانونية',
-      subtitle: 'بيانات المدرسة والمواعيد والنسب',
-      icon: Sliders,
-      perform: () => {
-        onNavigate('settings');
-        onClose();
-      },
-    });
+    if (canRoleAccessTab(currentUser.role, 'settings')) {
+      list.push({
+        id: 'nav_settings',
+        category: 'navigation',
+        title: 'إعدادات المنظومة والقواعد القانونية',
+        subtitle: 'بيانات المدرسة والمواعيد والنسب',
+        icon: Sliders,
+        perform: () => {
+          onNavigate('settings');
+          onClose();
+        },
+      });
+    }
 
     if (currentUser.role === 'directorate_admin') {
       list.push({
         id: 'nav_directorate',
         category: 'navigation',
-        title: 'لوحة قيادة المديرية والمدارس 🏛️',
+        title: 'كابينة تحكم المديرية والمدارس 🏛️',
         subtitle: 'الإدارة المركزية والتحكم في شبكة المدارس الفنية',
         icon: Building2,
         perform: () => {

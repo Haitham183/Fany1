@@ -32,6 +32,8 @@ import {
   AuditLogEntry,
   WorkDaysScheme,
   SchoolTenant,
+  DirectorateCircular,
+  SchoolInspectionReport,
 } from '@/types';
 import {
   MOCK_USERS,
@@ -49,6 +51,8 @@ import {
   SCHOOL_CONFIG,
   DEFAULT_EGYPTIAN_HOLIDAYS,
   DEFAULT_SCHOOLS,
+  DEFAULT_DIRECTORATE_CIRCULARS,
+  DEFAULT_INSPECTION_REPORTS,
 } from './mockData';
 import { db } from './db';
 import { runLocalStorageToIndexedDbMigration, hashNationalId, generateParentAccessCode, MIGRATION_KEY } from './migration';
@@ -77,6 +81,8 @@ const STORAGE_KEYS = {
   IS_AUTHENTICATED: 'egyptian_school_is_auth',
   SCHOOLS: 'egyptian_school_schools_list',
   ACTIVE_SCHOOL_ID: 'egyptian_active_school_id',
+  DIRECTORATE_CIRCULARS: 'egyptian_directorate_circulars',
+  INSPECTION_REPORTS: 'egyptian_directorate_inspection_reports',
 };
 
 // In-Memory Safe Reactive Cache for PII (Students & Social Cases) to prevent storing National IDs in LocalStorage
@@ -328,6 +334,104 @@ export const deleteSchool = (schoolId: string): boolean => {
     setActiveSchoolId(filtered[0].id);
   }
   return true;
+};
+
+// =========================================================================
+// Directorate Circulars & Inspection Reports
+// =========================================================================
+
+export const getDirectorateCirculars = (): DirectorateCircular[] => {
+  return getStoredData<DirectorateCircular[]>(STORAGE_KEYS.DIRECTORATE_CIRCULARS, DEFAULT_DIRECTORATE_CIRCULARS);
+};
+
+export const saveDirectorateCircular = (
+  circular: Partial<DirectorateCircular> & { title: string; content: string }
+): DirectorateCircular => {
+  const current = getDirectorateCirculars();
+  const id = circular.id || `circ_${Date.now()}`;
+  const now = new Date().toISOString().split('T')[0];
+  const newRecord: DirectorateCircular = {
+    id,
+    circularNumber: circular.circularNumber || `ك/د-2026/${current.length + 1}`,
+    title: circular.title,
+    subject: circular.subject || 'general',
+    content: circular.content,
+    issuedDate: circular.issuedDate || now,
+    priority: circular.priority || 'normal',
+    targetScope: circular.targetScope || 'all',
+    targetSchoolId: circular.targetSchoolId,
+    targetSchoolName: circular.targetSchoolName,
+    acknowledgedBySchoolIds: circular.acknowledgedBySchoolIds || [],
+    issuedBy: circular.issuedBy || 'د. حسام الدين عبد القادر - مدير عام التعليم الفني بالمديرية',
+  };
+
+  const updated = current.some((c) => c.id === id)
+    ? current.map((c) => (c.id === id ? newRecord : c))
+    : [newRecord, ...current];
+
+  setStoredData(STORAGE_KEYS.DIRECTORATE_CIRCULARS, updated);
+  return newRecord;
+};
+
+export const deleteDirectorateCircular = (id: string): void => {
+  const current = getDirectorateCirculars();
+  const filtered = current.filter((c) => c.id !== id);
+  setStoredData(STORAGE_KEYS.DIRECTORATE_CIRCULARS, filtered);
+};
+
+export const acknowledgeCircular = (circularId: string, schoolId: string): void => {
+  const current = getDirectorateCirculars();
+  const updated = current.map((c) => {
+    if (c.id === circularId) {
+      const existing = c.acknowledgedBySchoolIds || [];
+      if (!existing.includes(schoolId)) {
+        return { ...c, acknowledgedBySchoolIds: [...existing, schoolId] };
+      }
+    }
+    return c;
+  });
+  setStoredData(STORAGE_KEYS.DIRECTORATE_CIRCULARS, updated);
+};
+
+export const getInspectionReports = (): SchoolInspectionReport[] => {
+  return getStoredData<SchoolInspectionReport[]>(STORAGE_KEYS.INSPECTION_REPORTS, DEFAULT_INSPECTION_REPORTS);
+};
+
+export const saveInspectionReport = (
+  report: Partial<SchoolInspectionReport> & { schoolId: string; schoolName: string }
+): SchoolInspectionReport => {
+  const current = getInspectionReports();
+  const id = report.id || `insp_${Date.now()}`;
+  const now = new Date().toISOString().split('T')[0];
+  const newRecord: SchoolInspectionReport = {
+    id,
+    reportNumber: report.reportNumber || `تفتيش-2026/${current.length + 1}`,
+    schoolId: report.schoolId,
+    schoolName: report.schoolName,
+    inspectorName: report.inspectorName || 'لجنة المتابعة والتوجيه الفني بالمديرية',
+    visitDate: report.visitDate || now,
+    departmentInspected: report.departmentInspected || 'عام',
+    disciplineRating: report.disciplineRating || 'good',
+    ppeComplianceRating: report.ppeComplianceRating || 'compliant',
+    competencyAuditStatus: report.competencyAuditStatus || 'verified',
+    workshopAttendanceRate: report.workshopAttendanceRate ?? 85,
+    notes: report.notes || '',
+    recommendations: report.recommendations || '',
+    status: report.status || 'pending_school_action',
+  };
+
+  const updated = current.some((r) => r.id === id)
+    ? current.map((r) => (r.id === id ? newRecord : r))
+    : [newRecord, ...current];
+
+  setStoredData(STORAGE_KEYS.INSPECTION_REPORTS, updated);
+  return newRecord;
+};
+
+export const deleteInspectionReport = (id: string): void => {
+  const current = getInspectionReports();
+  const filtered = current.filter((r) => r.id !== id);
+  setStoredData(STORAGE_KEYS.INSPECTION_REPORTS, filtered);
 };
 
 // =========================================================================

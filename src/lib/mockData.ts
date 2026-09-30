@@ -11,6 +11,8 @@ import {
   StudentCompetencyAssessment,
   Holiday,
   SchoolTenant,
+  DirectorateCircular,
+  SchoolInspectionReport,
 } from '@/types';
 
 export const DEFAULT_EGYPTIAN_HOLIDAYS: Holiday[] = [
@@ -134,6 +136,80 @@ export const DEFAULT_SCHOOLS: SchoolTenant[] = [
     principalName: 'د. أشرف فوزي جرجس',
     isActive: true,
     createdAt: '2025-09-01T00:00:00.000Z',
+  },
+];
+
+export const DEFAULT_DIRECTORATE_CIRCULARS: DirectorateCircular[] = [
+  {
+    id: 'circ_2026_01',
+    circularNumber: 'ك/د-2026/01',
+    title: 'تأكيد الالتزام الصارم بحد الـ 85% لحضور الورش لدخول التقييم النهائي',
+    subject: 'cbe',
+    content: 'بناءً على القرار الوزاري المنظم لتقييم الجدارات المهنية لطلاب التعليم الفني، يُحظر حظراً تاماً دخول أي طالب لا يستوفي نسبة 85% من إجمالي الساعات المقررة للورش والتدريب العملي للتقييم النهائي لوحدات الجدارات.',
+    issuedDate: '2025-10-15',
+    priority: 'urgent',
+    targetScope: 'all',
+    acknowledgedBySchoolIds: ['sch_cairo_abbassia', 'sch_giza_imaba'],
+    issuedBy: 'د. حسام الدين عبد القادر - مدير عام التعليم الفني بالمديرية',
+  },
+  {
+    id: 'circ_2026_02',
+    circularNumber: 'ك/د-2026/02',
+    title: 'خطة تشديد إجراءات السلامة والصحة المهنية (HSE) ومهمات الوقاية',
+    subject: 'safety',
+    content: 'التأكيد على مديري المدارس الفنية ورؤساء الأقسام الصناعية بعدم السماح لأي طالب بالتواجد داخل الورش الميكانيكية والكهربائية بدون ارتداء مهمات الوقاية الشخصية (الأفرول وحذاء الأمان والنظارات الواقية) وتفتيش لوحات قواطع الطوارئ أسبوعياً.',
+    issuedDate: '2025-11-02',
+    priority: 'high',
+    targetScope: 'all',
+    acknowledgedBySchoolIds: ['sch_cairo_abbassia'],
+    issuedBy: 'د. حسام الدين عبد القادر - مدير عام التعليم الفني بالمديرية',
+  },
+  {
+    id: 'circ_2026_03',
+    circularNumber: 'ك/د-2026/03',
+    title: 'مواعيد انعقاد لجان التحقق الخارجي المعتمدة وممثلي سوق العمل',
+    subject: 'cbe',
+    content: 'تحديد المواعيد الزمنية لسحب عينات التحقق الخارجي لتقييمات الفصل الدراسي الأول بالتنسيق مع الغرف الصناعية وممثلي القطاع الخاص المعتمدين.',
+    issuedDate: '2025-12-10',
+    priority: 'normal',
+    targetScope: 'all',
+    acknowledgedBySchoolIds: ['sch_cairo_abbassia', 'sch_alex_tousson'],
+    issuedBy: 'د. حسام الدين عبد القادر - مدير عام التعليم الفني بالمديرية',
+  },
+];
+
+export const DEFAULT_INSPECTION_REPORTS: SchoolInspectionReport[] = [
+  {
+    id: 'insp_2026_01',
+    reportNumber: 'تفتيش-2026/01',
+    schoolId: 'sch_cairo_abbassia',
+    schoolName: 'مدرسة العباسية الثانوية الصناعية الميكانيكية العسكرية بنين',
+    inspectorName: 'م. أحمد كمال الدين (موجه عام مركزي بالمديرية)',
+    visitDate: '2025-11-18',
+    departmentInspected: 'قسم تشغيل المعادن والخراطة الميكانيكية',
+    disciplineRating: 'excellent',
+    ppeComplianceRating: 'compliant',
+    competencyAuditStatus: 'verified',
+    workshopAttendanceRate: 92,
+    notes: 'انتظام متميز للطلاب والمدربين، دفاتر الحضور وسجلات التقييم محدثة ومطابقة لمصفوفة الجدارات، مهمات الوقاية متوفرة وملتزم بها.',
+    recommendations: 'صرف مكافأة تميز لفريق ورشة الخراطة، والاستمرار على نفس المستوى في التوثيق.',
+    status: 'resolved',
+  },
+  {
+    id: 'insp_2026_02',
+    reportNumber: 'تفتيش-2026/02',
+    schoolId: 'sch_giza_imaba',
+    schoolName: 'مدرسة إمبابة الثانوية الصناعية بنين',
+    inspectorName: 'أ. طارق عبد العليم (عضو التوجيه الفني)',
+    visitDate: '2025-12-05',
+    departmentInspected: 'قسم الكهرباء الصناعية والتحكم الآلي',
+    disciplineRating: 'good',
+    ppeComplianceRating: 'partial',
+    competencyAuditStatus: 'pending_samples',
+    workshopAttendanceRate: 83,
+    notes: 'لوحظ نقص في نظارات الحماية الشخصية بورشة اللف والتركيبات، ونسبة الحضور لبعض فصول الصف الثاني أقل من 85%.',
+    recommendations: 'توجيه إخطار عاجل لإدارة المدرسة لتدارك مهمات الوقاية واستدعاء أولياء أمور الطلاب المتجاوزين لنسبة الغياب.',
+    status: 'pending_school_action',
   },
 ];
 

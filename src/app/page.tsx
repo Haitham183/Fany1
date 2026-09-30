@@ -57,7 +57,7 @@ import { ToastProvider } from '@/components/ui';
 import { CommandPaletteModal } from '@/components/CommandPaletteModal';
 import { SuperAdminDirectorateView } from '@/components/SuperAdminDirectorateView';
 import { SchoolSwitcherModal } from '@/components/SchoolSwitcherModal';
-import { normalizeTabId } from '@/lib/tabRouter';
+import { normalizeTabId, canRoleAccessTab, getDefaultTabForRole } from '@/lib/tabRouter';
 
 export default function HomePage() {
   return (
@@ -187,9 +187,12 @@ function MainAppContent() {
 
   const handleNavigate = (rawTab: string) => {
     let normalized = normalizeTabId(rawTab);
-    if (normalized === 'directorate' && currentUser.role !== 'directorate_admin') {
-      normalized = 'dashboard';
+
+    // Strictly validate if the user's role is authorized to open this tab
+    if (!canRoleAccessTab(currentUser.role, normalized)) {
+      normalized = getDefaultTabForRole(currentUser.role);
     }
+
     setActiveTab(normalized);
   };
 
@@ -350,15 +353,26 @@ function MainAppContent() {
 
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 max-w-full overflow-y-auto custom-scrollbar transition-all duration-300">
-          {activeTab === 'directorate' && currentUser.role === 'directorate_admin' && (
-            <SuperAdminDirectorateView
-              currentUser={currentUser}
-              onNavigateToSchool={(_schoolId) => {
-                refreshAllData();
-                handleNavigate('dashboard');
-              }}
-            />
-          )}
+          {(activeTab === 'directorate' ||
+            activeTab === 'directorate_schools' ||
+            activeTab === 'directorate_competencies' ||
+            activeTab === 'directorate_attendance' ||
+            activeTab === 'directorate_circulars' ||
+            activeTab === 'directorate_inspection') &&
+            currentUser.role === 'directorate_admin' && (
+              <SuperAdminDirectorateView
+                currentUser={currentUser}
+                students={students}
+                departments={departments}
+                classes={classes}
+                attendance={attendance}
+                initialSubTab={activeTab}
+                onNavigateToSchool={(_schoolId) => {
+                  refreshAllData();
+                  handleNavigate('dashboard');
+                }}
+              />
+            )}
 
           {activeTab === 'dashboard' && (
             <DashboardView

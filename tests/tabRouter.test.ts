@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeTabId, TAB_META } from '../src/lib/tabRouter';
+import { normalizeTabId, TAB_META, canRoleAccessTab, getDefaultTabForRole } from '../src/lib/tabRouter';
 
 describe('tabRouter & normalizeTabId', () => {
   it('normalizes canonical tab IDs properly', () => {
@@ -75,5 +75,84 @@ describe('tabRouter & normalizeTabId', () => {
     expect(TAB_META['dashboard'].label).toContain('الرئيسية');
     expect(TAB_META['official_sheets'].label).toContain('الدفاتر');
     expect(TAB_META['student_report'].label).toContain('بطاقة');
+    expect(TAB_META['directorate_schools'].label).toContain('شبكة');
+    expect(TAB_META['directorate_competencies'].label).toContain('الجدارات');
+    expect(TAB_META['directorate_attendance'].label).toContain('مرصد');
+  });
+
+  it('normalizes directorate sub-tab aliases', () => {
+    expect(normalizeTabId('directorate')).toBe('directorate');
+    expect(normalizeTabId('multi_school')).toBe('directorate');
+    expect(normalizeTabId('schools_network')).toBe('directorate_schools');
+    expect(normalizeTabId('directorate_cbe')).toBe('directorate_competencies');
+    expect(normalizeTabId('directorate_census')).toBe('directorate_attendance');
+    expect(normalizeTabId('circulars')).toBe('directorate_circulars');
+    expect(normalizeTabId('inspection_reports')).toBe('directorate_inspection');
+  });
+});
+
+describe('Role-Based Tab Access (canRoleAccessTab & getDefaultTabForRole)', () => {
+  it('strictly isolates directorate tabs to directorate_admin only', () => {
+    const directorateTabs = [
+      'directorate',
+      'directorate_schools',
+      'directorate_competencies',
+      'directorate_attendance',
+      'directorate_circulars',
+      'directorate_inspection',
+    ] as const;
+
+    for (const tab of directorateTabs) {
+      expect(canRoleAccessTab('directorate_admin', tab)).toBe(true);
+      expect(canRoleAccessTab('principal', tab)).toBe(false);
+      expect(canRoleAccessTab('system_admin', tab)).toBe(false);
+      expect(canRoleAccessTab('affairs_deputy', tab)).toBe(false);
+      expect(canRoleAccessTab('affairs_officer', tab)).toBe(false);
+      expect(canRoleAccessTab('dept_head', tab)).toBe(false);
+      expect(canRoleAccessTab('teacher', tab)).toBe(false);
+      expect(canRoleAccessTab('social_worker', tab)).toBe(false);
+      expect(canRoleAccessTab('external_verifier', tab)).toBe(false);
+    }
+  });
+
+  it('enforces zero-leak boundary for external verifiers', () => {
+    expect(canRoleAccessTab('external_verifier', 'competencies')).toBe(true);
+    expect(canRoleAccessTab('external_verifier', 'departments')).toBe(true);
+    expect(canRoleAccessTab('external_verifier', 'dashboard')).toBe(true);
+
+    // Forbidden for external verifier
+    expect(canRoleAccessTab('external_verifier', 'settings')).toBe(false);
+    expect(canRoleAccessTab('external_verifier', 'users')).toBe(false);
+    expect(canRoleAccessTab('external_verifier', 'affairs')).toBe(false);
+    expect(canRoleAccessTab('external_verifier', 'official_sheets')).toBe(false);
+    expect(canRoleAccessTab('external_verifier', 'social_portal')).toBe(false);
+  });
+
+  it('enforces boundaries for system_admin and teachers', () => {
+    // System admin only IT and config
+    expect(canRoleAccessTab('system_admin', 'users')).toBe(true);
+    expect(canRoleAccessTab('system_admin', 'settings')).toBe(true);
+    expect(canRoleAccessTab('system_admin', 'competencies')).toBe(false);
+    expect(canRoleAccessTab('system_admin', 'official_sheets')).toBe(false);
+
+    // Teachers only educational, attendance and workshops
+    expect(canRoleAccessTab('teacher', 'attendance')).toBe(true);
+    expect(canRoleAccessTab('teacher', 'competencies')).toBe(true);
+    expect(canRoleAccessTab('teacher', 'safety')).toBe(true);
+    expect(canRoleAccessTab('teacher', 'settings')).toBe(false);
+    expect(canRoleAccessTab('teacher', 'users')).toBe(false);
+  });
+
+  it('returns correct default landing tab for each role', () => {
+    expect(getDefaultTabForRole('directorate_admin')).toBe('directorate');
+    expect(getDefaultTabForRole('teacher')).toBe('attendance');
+    expect(getDefaultTabForRole('dept_head')).toBe('departments');
+    expect(getDefaultTabForRole('external_verifier')).toBe('competencies');
+    expect(getDefaultTabForRole('social_worker')).toBe('social_portal');
+    expect(getDefaultTabForRole('affairs_deputy')).toBe('affairs');
+    expect(getDefaultTabForRole('affairs_officer')).toBe('affairs');
+    expect(getDefaultTabForRole('parent')).toBe('parent_portal');
+    expect(getDefaultTabForRole('principal')).toBe('dashboard');
+    expect(getDefaultTabForRole('system_admin')).toBe('dashboard');
   });
 });
