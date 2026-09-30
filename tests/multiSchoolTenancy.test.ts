@@ -7,7 +7,7 @@ import {
   saveSchool,
   deleteSchool,
   getSchoolConfig,
-  saveSchoolConfig,
+  updateSchoolConfig,
 } from '../src/lib/storage';
 import { DEFAULT_SCHOOLS } from '../src/lib/mockData';
 

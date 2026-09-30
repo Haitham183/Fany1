@@ -308,6 +308,8 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   // Helper to map user role to target portal automatically
   const mapRoleToPortal = (role: UserRole): PortalType => {
     switch (role) {
+      case 'directorate_admin':
+        return 'directorate';
       case 'principal':
         return 'principal';
       case 'affairs_deputy':

@@ -335,7 +335,25 @@ export const deleteSchool = (schoolId: string): boolean => {
 // =========================================================================
 
 export const getCurrentUser = (): User => getStoredData(STORAGE_KEYS.CURRENT_USER, MOCK_USERS[0]);
-export const getUsers = (): User[] => getStoredData(STORAGE_KEYS.USERS, MOCK_USERS);
+export const getUsers = (): User[] => {
+  const users = getStoredData<User[]>(STORAGE_KEYS.USERS, MOCK_USERS);
+  // Ensure default essential accounts (especially directorate_admin) always exist
+  const existingUsernames = new Set(users.map((u) => u.username.toLowerCase().trim()));
+  let modified = false;
+  const merged = [...users];
+
+  MOCK_USERS.forEach((mockUser) => {
+    if (!existingUsernames.has(mockUser.username.toLowerCase().trim())) {
+      merged.push(mockUser);
+      modified = true;
+    }
+  });
+
+  if (modified) {
+    setStoredData(STORAGE_KEYS.USERS, merged);
+  }
+  return merged;
+};
 
 export const getStudents = (): Student[] => {
   return sortStudentsAlphabetically(inMemoryStudentsCache);
