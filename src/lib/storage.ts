@@ -53,6 +53,7 @@ import { runLocalStorageToIndexedDbMigration, hashNationalId, generateParentAcce
 import { logAuditEvent, getAuditLogs } from './auditLogger';
 import { OFFICIAL_TERMS } from './terms';
 import { autoSyncKeyToCloud, deleteRowFromCloud, wipeCloudDatabase } from './supabaseSync';
+import { clearOfflineQueue } from './offlineSyncEngine';
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'egyptian_school_current_user',
@@ -78,6 +79,22 @@ let inMemoryStudentsCache: Student[] = [];
 let inMemorySocialCasesCache: SocialCaseRecord[] = [];
 let inMemoryGrievancesCache: GrievanceRecord[] = [];
 let inMemoryCalendarCache: AssessmentCalendarEvent[] = [];
+
+export const updateInMemoryStudentsCache = (students: Student[]) => {
+  inMemoryStudentsCache = sortStudentsAlphabetically(students);
+};
+
+export const updateInMemorySocialCasesCache = (cases: SocialCaseRecord[]) => {
+  inMemorySocialCasesCache = cases;
+};
+
+export const updateInMemoryGrievancesCache = (grievances: GrievanceRecord[]) => {
+  inMemoryGrievancesCache = grievances;
+};
+
+export const updateInMemoryCalendarCache = (events: AssessmentCalendarEvent[]) => {
+  inMemoryCalendarCache = events;
+};
 
 // Safe Storage helpers
 export const getStoredData = <T>(key: string, defaultValue: T): T => {
@@ -2589,11 +2606,12 @@ export const wipeDatabaseForProduction = async (): Promise<void> => {
     console.error('Failed to clear IndexedDB tables:', err);
   }
 
-  // 2. Clear In-Memory Caches
+  // 2. Clear In-Memory Caches & Offline Queue
   inMemoryStudentsCache = [];
   inMemorySocialCasesCache = [];
   inMemoryGrievancesCache = [];
   inMemoryCalendarCache = [];
+  clearOfflineQueue();
 
   // 3. Reset LocalStorage to clean state
   localStorage.clear();

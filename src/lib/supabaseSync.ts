@@ -12,6 +12,8 @@ import {
   getCompetencyUnits,
   getCompetencyAssessments,
   getSocialCases,
+  updateInMemoryStudentsCache,
+  updateInMemorySocialCasesCache,
 } from './storage';
 
 export type SyncStatusType = 'synced' | 'syncing' | 'error' | 'connected' | 'offline';
@@ -252,20 +254,54 @@ export const wipeCloudDatabase = async (): Promise<{ success: boolean; message: 
   }
 
   try {
-    notifySyncStatus('syncing', 'جارٍ تفريغ وتصفير قاعدة البيانات السحابية...');
+    notifySyncStatus('syncing', 'جارٍ تفريغ وتصفير كافة جداول قاعدة البيانات السحابية...');
 
-    // Delete all operational rows from Supabase
+    // Delete all operational rows from Supabase using not('id', 'is', null)
     await Promise.allSettled([
-      supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('attendance_records').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('official_notices').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('workshop_violations').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('competency_assessments').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('social_cases').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('students').delete().not('id', 'is', null),
+      supabase.from('attendance_records').delete().not('id', 'is', null),
+      supabase.from('official_notices').delete().not('id', 'is', null),
+      supabase.from('workshop_violations').delete().not('id', 'is', null),
+      supabase.from('competency_assessments').delete().not('id', 'is', null),
+      supabase.from('social_cases').delete().not('id', 'is', null),
+      supabase.from('classes').delete().not('id', 'is', null),
+      supabase.from('departments').delete().not('id', 'is', null),
     ]);
 
-    notifySyncStatus('synced', 'تم تفريغ السحابة وتصفيرها بالكامل للإنتاج 🟢');
-    return { success: true, message: 'تم تصفير قاعدة البيانات السحابية بنجاح' };
+    // Reseed clean departments with 0 students and clean classes with 0 count
+    const cleanDepts = getDepartments().map((d) => ({ ...d, totalStudents: 0 }));
+    const cleanClasses = getClasses().map((c) => ({ ...c, studentCount: 0 }));
+    const config = getSchoolConfig();
+
+    await Promise.allSettled([
+      supabase.from('departments').upsert(
+        cleanDepts.map((d) => ({
+          id: d.id,
+          name: d.name,
+          code: d.code,
+          data: d,
+          updated_at: new Date().toISOString(),
+        }))
+      ),
+      supabase.from('classes').upsert(
+        cleanClasses.map((c) => ({
+          id: c.id,
+          name: c.name,
+          grade_level: c.gradeLevel,
+          department_id: c.departmentId,
+          data: c,
+          updated_at: new Date().toISOString(),
+        }))
+      ),
+      supabase.from('school_config').upsert({
+        id: 'config_primary',
+        data: config,
+        updated_at: new Date().toISOString(),
+      }),
+    ]);
+
+    notifySyncStatus('synced', 'تم تفريغ السحابة وتصفيرها بالكامل للإنتاج (0 طلاب) 🟢');
+    return { success: true, message: 'تم تصفير وتطهير قاعدة البيانات السحابية بنجاح' };
   } catch (error: any) {
     console.error('Error wiping cloud database:', error);
     notifySyncStatus('error', 'تعذر تفريغ قاعدة البيانات السحابية');
@@ -274,7 +310,7 @@ export const wipeCloudDatabase = async (): Promise<{ success: boolean; message: 
 };
 
 /**
- * Pulls latest data from Supabase and syncs local storage.
+ * Pulls latest data from Supabase and syncs local storage and Dexie.
  */
 export const pullAllDataFromCloud = async (isBackground = false): Promise<{ success: boolean; message: string }> => {
   if (!isSupabaseConfigured || !supabase) {
@@ -321,6 +357,7 @@ export const pullAllDataFromCloud = async (isBackground = false): Promise<{ succ
     if (studentRows) {
       const parsedStudents = studentRows.map((r) => r.data).filter(Boolean);
       localStorage.setItem('egyptian_school_students', JSON.stringify(parsedStudents));
+      updateInMemoryStudentsCache(parsedStudents);
       if (studentRows.length > 0) hasAnyCloudData = true;
       try {
         await db.students.clear();
@@ -398,6 +435,7 @@ export const pullAllDataFromCloud = async (isBackground = false): Promise<{ succ
     if (socRows) {
       const parsedSoc = socRows.map((r) => r.data).filter(Boolean);
       localStorage.setItem('egyptian_school_social_cases', JSON.stringify(parsedSoc));
+      updateInMemorySocialCasesCache(parsedSoc);
       if (socRows.length > 0) hasAnyCloudData = true;
       try {
         await db.social_cases.clear();
@@ -407,14 +445,16 @@ export const pullAllDataFromCloud = async (isBackground = false): Promise<{ succ
       } catch {}
     }
 
-    // If cloud is totally blank on first run and local has non-empty state, push local defaults
-    const isProduction = localStorage.getItem('egyptian_school_production_mode') === 'true';
+    // If cloud is totally blank on first run and local has non-empty state and is NOT production mode, push local defaults
+    const isProduction = typeof window !== 'undefined' && localStorage.getItem('egyptian_school_production_mode') === 'true';
     if (!hasAnyCloudData && !isProduction) {
       console.log('Cloud database is empty, initializing with local defaults...');
       await pushAllDataToCloud();
     } else {
       isApplyingRemoteUpdate = true;
-      window.dispatchEvent(new Event('egyptian_school_storage_update'));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('egyptian_school_storage_update'));
+      }
       isApplyingRemoteUpdate = false;
     }
 
@@ -446,7 +486,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_users':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('school_users').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('school_users').delete().not('id', 'is', null);
           } else {
             await supabase.from('school_users').upsert(
               data.map((u: any) => ({
@@ -468,7 +508,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_departments':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('departments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('departments').delete().not('id', 'is', null);
           } else {
             await supabase.from('departments').upsert(
               data.map((d: any) => ({
@@ -486,7 +526,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_classes':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('classes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('classes').delete().not('id', 'is', null);
           } else {
             await supabase.from('classes').upsert(
               data.map((c: any) => ({
@@ -505,7 +545,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_students':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('students').delete().not('id', 'is', null);
           } else {
             await supabase.from('students').upsert(
               data.map((s: any) => ({
@@ -526,7 +566,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_attendance':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('attendance_records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('attendance_records').delete().not('id', 'is', null);
           } else {
             await supabase.from('attendance_records').upsert(
               data.map((a: any) => ({
@@ -546,7 +586,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_notices':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('official_notices').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('official_notices').delete().not('id', 'is', null);
           } else {
             await supabase.from('official_notices').upsert(
               data.map((n: any) => ({
@@ -564,7 +604,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_workshop_violations':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('workshop_violations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('workshop_violations').delete().not('id', 'is', null);
           } else {
             await supabase.from('workshop_violations').upsert(
               data.map((v: any) => ({
@@ -582,7 +622,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_competency_units':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('competency_units').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('competency_units').delete().not('id', 'is', null);
           } else {
             await supabase.from('competency_units').upsert(
               data.map((u: any) => ({
@@ -602,7 +642,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_competency_assessments':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('competency_assessments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('competency_assessments').delete().not('id', 'is', null);
           } else {
             await supabase.from('competency_assessments').upsert(
               data.map((a: any) => ({
@@ -621,7 +661,7 @@ const syncKeyDirectlyToCloud = async (key: string, data: any) => {
       case 'egyptian_school_social_cases':
         if (Array.isArray(data)) {
           if (data.length === 0) {
-            await supabase.from('social_cases').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('social_cases').delete().not('id', 'is', null);
           } else {
             await supabase.from('social_cases').upsert(
               data.map((s: any) => ({
@@ -778,6 +818,13 @@ export const setupRealtimeSync = (onRemoteUpdate?: () => void) => {
                 currentList = currentList.filter((item) => item.id !== deletedId);
                 localStorage.setItem(storageKey, JSON.stringify(currentList));
               }
+            }
+
+            if (storageKey === 'egyptian_school_students') {
+              updateInMemoryStudentsCache(currentList);
+            }
+            if (storageKey === 'egyptian_school_social_cases') {
+              updateInMemorySocialCasesCache(currentList);
             }
           }
 
