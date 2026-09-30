@@ -17,6 +17,7 @@ import {
   GrievanceRecord,
   AssessmentCalendarEvent,
   SchoolConfig,
+  OfflineMediaEvidence,
 } from '@/types';
 
 export interface PendingSyncItem {
@@ -47,6 +48,7 @@ export class EgyptianSchoolDatabase extends Dexie {
   assessment_calendar!: Table<AssessmentCalendarEvent, string>;
   school_settings!: Table<SchoolConfig, string>;
   pending_sync_queue!: Table<PendingSyncItem, number>;
+  media_evidence!: Table<OfflineMediaEvidence, string>;
 
   constructor() {
     super('EgyptianSchoolDB_v2');
@@ -69,6 +71,7 @@ export class EgyptianSchoolDatabase extends Dexie {
       assessment_calendar: 'id, eventType, startDate, endDate, created_at, updated_at',
       school_settings: 'id, name, updated_at',
       pending_sync_queue: '++id, tableName, recordId, action, createdAt',
+      media_evidence: 'id, category, studentId, classId, departmentId, isSynced, createdAt',
     });
   }
 }

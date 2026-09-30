@@ -754,3 +754,19 @@ export interface BackupPackage {
     auditLogs?: AuditLogEntry[];
   };
 }
+
+export interface OfflineMediaEvidence {
+  id: string;
+  category: 'workshop_product' | 'safety_violation' | 'attendance_excuse' | 'portfolio_evidence' | 'inspection_doc';
+  studentId?: string;
+  classId?: string;
+  departmentId?: string;
+  title: string;
+  description?: string;
+  mimeType: string;
+  dataUrl: string; // Base64 data or Blob URL
+  fileSize?: number;
+  isSynced: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}

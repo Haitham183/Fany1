@@ -1,6 +1,7 @@
 'use client';
 
 import { pushAllDataToCloud, notifySyncStatus } from './supabaseSync';
+import { notifyOfflineSyncComplete } from './notificationService';
 
 export interface QueuedOfflineAction {
   id: string;
@@ -14,7 +15,7 @@ export interface QueuedOfflineAction {
 const OFFLINE_QUEUE_KEY = 'egyptian_school_offline_queue';
 
 export const isDeviceOnline = (): boolean => {
-  if (typeof navigator !== 'undefined') {
+  if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
     return navigator.onLine;
   }
   return true;
@@ -56,6 +57,15 @@ export const enqueueOfflineAction = (action: Omit<QueuedOfflineAction, 'id' | 't
   filtered.push(newAction);
   saveOfflineQueue(filtered);
   notifySyncStatus('offline', `تم حفظ العملية محلياً (${filtered.length} معلقة في وضع عدم الاتصال) 📴`);
+
+  // Request Service Worker Background Sync if supported
+  if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'SyncManager' in window) {
+    navigator.serviceWorker.ready.then((reg: any) => {
+      if (reg.sync) {
+        reg.sync.register('sync-school-data').catch(() => {});
+      }
+    }).catch(() => {});
+  }
 };
 
 export const clearOfflineQueue = () => {
@@ -87,6 +97,10 @@ export const flushOfflineQueue = async (): Promise<{ success: boolean; syncedCou
       const count = queue.length;
       clearOfflineQueue();
       notifySyncStatus('synced', `تمت مزامنة جميع العمليات المعلقة (${count}) بنجاح تام 🟢`);
+      
+      // Trigger Web Push / Local System Notification for successful offline recovery
+      notifyOfflineSyncComplete(count);
+
       return { success: true, syncedCount: count };
     } else {
       notifySyncStatus('error', 'تعذر إتمام المزامنة السحابية للمعلقات. ستتم المحاولة لاحقاً ⚠️');
@@ -122,13 +136,19 @@ export const initOfflineSyncEngine = () => {
     );
   });
 
-  // Register Progressive Web App (PWA) Service Worker
-  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  // Listen for Service Worker background sync flush trigger
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'TRIGGER_OFFLINE_QUEUE_FLUSH') {
+        flushOfflineQueue();
+      }
+    });
+
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/sw.js')
         .then((reg) => {
-          console.log('Egyptian School TVET PWA Service Worker Registered:', reg.scope);
+          console.log('Egyptian School TVET PWA Service Worker Active:', reg.scope);
         })
         .catch((err) => {
           console.warn('Service Worker registration skipped:', err);

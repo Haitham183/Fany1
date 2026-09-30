@@ -51,6 +51,7 @@ import { SocialWorkerPortalView } from '@/components/SocialWorkerPortalView';
 import { initOfflineSyncEngine } from '@/lib/offlineSyncEngine';
 import { PortalSelectionScreen } from '@/components/PortalSelectionScreen';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
+import { OfflineSyncBanner } from '@/components/OfflineSyncBanner';
 import { PortalType, SocialCaseRecord } from '@/types';
 import { ToastProvider } from '@/components/ui';
 import { CommandPaletteModal } from '@/components/CommandPaletteModal';
@@ -564,6 +565,9 @@ function MainAppContent() {
         onOpenRoleSwitcher={() => setIsRoleModalOpen(true)}
         onLogout={handleLogout}
       />
+
+      {/* Persistent PWA & Offline Sync Status Banner */}
+      <OfflineSyncBanner />
     </div>
   );
 }

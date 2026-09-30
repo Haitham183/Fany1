@@ -54,6 +54,7 @@ import { logAuditEvent, getAuditLogs } from './auditLogger';
 import { OFFICIAL_TERMS } from './terms';
 import { autoSyncKeyToCloud, deleteRowFromCloud, wipeCloudDatabase } from './supabaseSync';
 import { clearOfflineQueue } from './offlineSyncEngine';
+import { notifySevereAbsenceWarning, notifyWorkshopSafetyAlert } from './notificationService';
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'egyptian_school_current_user',
@@ -1142,6 +1143,7 @@ export const saveClassAttendance = (
         isDelivered: false,
       };
       currentNotices.unshift(notice);
+      notifySevereAbsenceWarning(student.fullName, consecAbs || totalAbs, notice.noticeTitle);
     } else if ((consecAbs >= warn2Consec || totalAbs >= warn2Total) && warningLevel < 2) {
       warningLevel = 2;
       newWarningsCount++;
@@ -1168,6 +1170,7 @@ export const saveClassAttendance = (
         isDelivered: false,
       };
       currentNotices.unshift(notice);
+      notifySevereAbsenceWarning(student.fullName, consecAbs || totalAbs, notice.noticeTitle);
     } else if ((consecAbs >= warn1Consec || totalAbs >= warn1Total) && warningLevel < 1) {
       warningLevel = 1;
       newWarningsCount++;
@@ -1194,6 +1197,7 @@ export const saveClassAttendance = (
         isDelivered: false,
       };
       currentNotices.unshift(notice);
+      notifySevereAbsenceWarning(student.fullName, consecAbs || totalAbs, notice.noticeTitle);
     }
 
     return {
@@ -1821,6 +1825,11 @@ export const logWorkshopViolation = (violation: Omit<WorkshopViolationRecord, 'i
   }
 
   setStoredData(STORAGE_KEYS.WORKSHOP_VIOLATIONS, [newRecord, ...violations]);
+
+  const targetStudent = students.find((s) => s.id === violation.studentId);
+  if (targetStudent) {
+    notifyWorkshopSafetyAlert(targetStudent.fullName, violation.description || violation.violationType);
+  }
 
   logAuditEvent({
     actorId: currentUser.id,
