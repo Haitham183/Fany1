@@ -250,7 +250,26 @@ export const sortStudentsAlphabetically = (studentList: Student[]): Student[] =>
 // =========================================================================
 
 export const getSchools = (): SchoolTenant[] => {
-  return getStoredData<SchoolTenant[]>(STORAGE_KEYS.SCHOOLS, DEFAULT_SCHOOLS);
+  const schools = getStoredData<SchoolTenant[]>(STORAGE_KEYS.SCHOOLS, DEFAULT_SCHOOLS);
+  let modified = false;
+  const updated = schools.map((s) => {
+    let pin = s.accessPin;
+    let username = s.schoolUsername;
+    if (!pin) {
+      pin = s.code || '10201';
+      modified = true;
+    }
+    if (!username) {
+      username = s.code || `sch_${s.id}`;
+      modified = true;
+    }
+    return { ...s, accessPin: pin, schoolUsername: username };
+  });
+
+  if (modified) {
+    setStoredData(STORAGE_KEYS.SCHOOLS, updated);
+  }
+  return updated;
 };
 
 export const getActiveSchoolId = (): string => {
@@ -300,16 +319,80 @@ export const setActiveSchoolId = (schoolId: string): boolean => {
   return true;
 };
 
+/**
+ * Ensures an official Principal user account exists and is synchronized with the school's secret PIN.
+ */
+export const syncSchoolPrincipalAccount = (school: SchoolTenant): User => {
+  const users = getUsers();
+  const username = (school.schoolUsername || school.code).toLowerCase().trim();
+  const pin = school.accessPin || school.code || '10201';
+  const principalName = school.principalName || `مدير ${school.name}`;
+
+  const existingIdx = users.findIndex(
+    (u) =>
+      (u.schoolId === school.id && (u.role === 'principal' || u.role === 'system_admin')) ||
+      u.username.toLowerCase().trim() === username ||
+      (school.code && u.username.toLowerCase().trim() === school.code.toLowerCase().trim())
+  );
+
+  let schoolUser: User;
+  if (existingIdx >= 0) {
+    schoolUser = {
+      ...users[existingIdx],
+      password: pin,
+      schoolId: school.id,
+      name: school.principalName || users[existingIdx].name,
+      role: 'principal',
+      roleTitle: 'مدير عام المدرسة الصناعية / القائد التنفيذي',
+    };
+    users[existingIdx] = schoolUser;
+  } else {
+    schoolUser = {
+      id: `user_principal_${school.id}`,
+      name: principalName,
+      username: username,
+      password: pin,
+      role: 'principal',
+      roleTitle: 'مدير عام المدرسة الصناعية / القائد التنفيذي',
+      schoolId: school.id,
+      customPermissions: {
+        canTakeAttendance: true,
+        canManageStudents: true,
+        canTransferStudents: true,
+        canApproveExcuses: true,
+        canIssueNotices: true,
+        canManageSchoolSettings: true,
+        canManageUsers: true,
+        canViewReports: true,
+        canManageCompetencies: true,
+        canLogViolations: true,
+        canManageSocialCases: true,
+        canAuditAssessments: true,
+        canManageDirectorate: false,
+      },
+    };
+    users.push(schoolUser);
+  }
+
+  setStoredData(STORAGE_KEYS.USERS, users);
+  return schoolUser;
+};
+
 export const saveSchool = (schoolData: Partial<SchoolTenant> & { name: string; code: string }): SchoolTenant => {
   const schools = getSchools();
   let updatedSchool: SchoolTenant;
   let updatedList: SchoolTenant[];
+
+  const accessPin = schoolData.accessPin?.trim() || Math.floor(100000 + Math.random() * 900000).toString();
+  const schoolUsername = schoolData.schoolUsername?.trim() || schoolData.code.trim();
 
   if (schoolData.id) {
     const existing = schools.find((s) => s.id === schoolData.id);
     updatedSchool = {
       ...(existing || DEFAULT_SCHOOLS[0]),
       ...schoolData,
+      accessPin: schoolData.accessPin !== undefined ? schoolData.accessPin : existing?.accessPin || accessPin,
+      schoolUsername: schoolData.schoolUsername !== undefined ? schoolData.schoolUsername : existing?.schoolUsername || schoolUsername,
       updatedAt: new Date().toISOString(),
     };
     updatedList = schools.map((s) => (s.id === schoolData.id ? updatedSchool : s));
@@ -318,6 +401,8 @@ export const saveSchool = (schoolData: Partial<SchoolTenant> & { name: string; c
       id: `sch_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       name: schoolData.name,
       code: schoolData.code,
+      accessPin,
+      schoolUsername,
       directorate: schoolData.directorate || 'مديرية التربية والتعليم',
       administration: schoolData.administration || 'إدارة التعليم الفني',
       systemType: schoolData.systemType || '3_years',
@@ -333,6 +418,8 @@ export const saveSchool = (schoolData: Partial<SchoolTenant> & { name: string; c
   }
 
   setStoredData(STORAGE_KEYS.SCHOOLS, updatedList);
+  syncSchoolPrincipalAccount(updatedSchool);
+
   if (typeof window !== 'undefined') {
     db.schools.put(updatedSchool).catch(() => {});
   }
@@ -1083,7 +1170,7 @@ export const deleteAssessmentCalendarEvent = (eventId: string) => {
 export const login = (username: string, password?: string): { success: boolean; user?: User; error?: string } => {
   const cleanUsername = username.toLowerCase().trim();
 
-  // Guarantee directorate login always resolves cleanly to directorate_admin
+  // 1. Guarantee directorate login always resolves cleanly to directorate_admin
   if (cleanUsername === 'directorate') {
     if (password && password.trim() !== '123') {
       return { success: false, error: 'كلمة المرور غير صحيحة' };
@@ -1094,10 +1181,40 @@ export const login = (username: string, password?: string): { success: boolean; 
     return { success: true, user: directorateUser };
   }
 
+  // 2. Check if logging in directly via School Code / School Username + School Secret PIN
+  const schools = getSchools();
+  const matchedSchool = schools.find(
+    (s) =>
+      s.code.toLowerCase().trim() === cleanUsername ||
+      (s.schoolUsername && s.schoolUsername.toLowerCase().trim() === cleanUsername) ||
+      s.id.toLowerCase().trim() === cleanUsername
+  );
+
+  if (matchedSchool) {
+    const requiredPin = (matchedSchool.accessPin || matchedSchool.code || '10201').trim();
+    if (password && password.trim() !== requiredPin) {
+      return { success: false, error: 'الرقم السري للمدرسة غير صحيح' };
+    }
+
+    // Activate this school environment
+    setActiveSchoolId(matchedSchool.id);
+
+    // Sync or retrieve the principal user for this school
+    const schoolUser = syncSchoolPrincipalAccount(matchedSchool);
+    setCurrentUser(schoolUser);
+    setStoredData(STORAGE_KEYS.IS_AUTHENTICATED, true);
+    return { success: true, user: schoolUser };
+  }
+
+  // 3. Standard User Login
   const users = getUsers();
   const user = users.find((u) => u.username.toLowerCase() === cleanUsername);
-  if (!user) return { success: false, error: 'اسم المستخدم غير موجود' };
+  if (!user) return { success: false, error: 'اسم المستخدم أو كود المدرسة غير موجود' };
   if (user.password && password && user.password !== password.trim()) return { success: false, error: 'كلمة المرور غير صحيحة' };
+
+  if (user.schoolId && user.schoolId !== 'all') {
+    setActiveSchoolId(user.schoolId);
+  }
 
   setCurrentUser(user);
   setStoredData(STORAGE_KEYS.IS_AUTHENTICATED, true);

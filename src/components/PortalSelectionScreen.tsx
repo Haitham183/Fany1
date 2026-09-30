@@ -33,6 +33,7 @@ import {
   HeartHandshake,
   Flame,
   Clock,
+  School,
 } from 'lucide-react';
 
 interface PortalSelectionScreenProps {
@@ -53,6 +54,7 @@ interface StaffPortalInfo {
   badge: string;
   icon: any;
   defaultUsername: string;
+  defaultPassword?: string;
   color: {
     pillActive: string;
     borderActive: string;
@@ -204,19 +206,20 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
       id: 'principal',
       portalType: 'principal',
       roleKey: 'principal',
-      title: 'مدير عام المدرسة',
-      subtitle: 'الإدارة العليا والرقابة والاعتماد المدرسي',
-      badge: 'إدارة عليا',
-      icon: Building2,
-      defaultUsername: 'admin',
+      title: 'مدير وإدارة المدرسة الفنية',
+      subtitle: 'دخول حساب المدرسة عبر كود المدرسة والرقم السري المعتمد',
+      badge: 'كود المدرسة + PIN 🔐',
+      icon: School,
+      defaultUsername: '10201',
+      defaultPassword: '10201',
       color: {
-        pillActive: 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/25 border-amber-300 ring-2 ring-amber-400/50',
-        borderActive: 'border-amber-500/50',
-        bgGlow: 'from-amber-500/20 via-slate-900 to-slate-950',
-        accent: 'text-amber-400',
-        badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        pillActive: 'bg-emerald-600 text-white font-black shadow-lg shadow-emerald-600/25 border-emerald-300 ring-2 ring-emerald-400/50',
+        borderActive: 'border-emerald-500/50',
+        bgGlow: 'from-emerald-500/20 via-slate-900 to-slate-950',
+        accent: 'text-emerald-400',
+        badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
       },
-      description: 'لوحة القيادة والمؤشرات، إدارة التخصصات والفترات، اعتماد الإنذارات، والنسخ الاحتياطي.',
+      description: 'تسجيل دخول المنشأة التعليمية باستخدام الكود الوزاري والرقم السري الصادر من المديرية أو حساب المدير.',
     },
     {
       id: 'affairs',
@@ -377,7 +380,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   const handleQuickDemoFill = (portal: StaffPortalInfo) => {
     setSelectedStaffPortal(portal.id);
     setUsername(portal.defaultUsername);
-    setPassword('123');
+    setPassword(portal.defaultPassword || '123');
     setErrorMsg(null);
   };
 
@@ -593,17 +596,17 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                     <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
                       <span className="flex items-center gap-1">
                         <UserCheck className="w-3.5 h-3.5 text-amber-400" />
-                        <span>اسم المستخدم (Username)</span>
+                        <span>اسم المستخدم أو كود المدرسة الوزاري</span>
                       </span>
                       <span className="text-[10px] text-slate-500 font-normal">
-                        تجريبي: {currentStaffPortal.defaultUsername}
+                        المقترح: {currentStaffPortal.defaultUsername}
                       </span>
                     </label>
                     <div className="relative">
                       <input
                         type="text"
                         required
-                        placeholder="أدخل اسم المستخدم المعتمد..."
+                        placeholder="أدخل اسم المستخدم أو كود المدرسة (مثال: 10201)..."
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pr-3.5 pl-3 py-2.5 text-sm text-white font-mono font-bold focus:ring-2 focus:ring-amber-500/30 focus:outline-hidden transition shadow-inner"
@@ -615,17 +618,17 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                     <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
                       <span className="flex items-center gap-1">
                         <Lock className="w-3.5 h-3.5 text-amber-400" />
-                        <span>كلمة المرور (Password)</span>
+                        <span>كلمة المرور أو الرقم السري للمدرسة (PIN)</span>
                       </span>
                       <span className="text-[10px] text-slate-500 font-normal">
-                        الافتراضية: 123
+                        المقترحة: {currentStaffPortal.defaultPassword || '123'}
                       </span>
                     </label>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
-                        placeholder="أدخل كلمة المرور..."
+                        placeholder="أدخل كلمة المرور أو الرقم السري للمدرسة..."
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pr-3.5 pl-10 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-amber-500/30 focus:outline-hidden transition shadow-inner"

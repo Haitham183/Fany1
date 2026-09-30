@@ -8,6 +8,7 @@ import {
   deleteSchool,
   getSchoolConfig,
   updateSchoolConfig,
+  login,
 } from '../src/lib/storage';
 import { DEFAULT_SCHOOLS } from '../src/lib/mockData';
 
@@ -114,5 +115,63 @@ describe('Multi-School Tenancy System', () => {
 
     // Should automatically fallback to remaining active school
     expect(getActiveSchoolId()).not.toBe(targetToDelete.id);
+  });
+
+  it('should automatically assign secret PIN and enable direct login with school code and PIN', () => {
+    const newSchool = saveSchool({
+      name: 'مدرسة السويس الفنية المتقدمة',
+      code: 'SUEZ_TECH_01',
+      directorate: 'مديرية التربية والتعليم بالسويس',
+      administration: 'إدارة السويس التعليمية',
+      systemType: '5_years_advanced',
+      shiftType: 'single_morning',
+      workDaysScheme: 'sun_to_thu',
+      principalName: 'د. وليد فاروق',
+      accessPin: '849201',
+      schoolUsername: 'suez_tech',
+      isActive: true,
+    });
+
+    expect(newSchool.accessPin).toBe('849201');
+    expect(newSchool.schoolUsername).toBe('suez_tech');
+
+    // Test successful login via school code and PIN
+    const codeLoginRes = login('SUEZ_TECH_01', '849201');
+    expect(codeLoginRes.success).toBe(true);
+    expect(codeLoginRes.user).toBeDefined();
+    expect(codeLoginRes.user?.role).toBe('principal');
+    expect(getActiveSchoolId()).toBe(newSchool.id);
+
+    // Test successful login via custom school username and PIN
+    const usernameLoginRes = login('suez_tech', '849201');
+    expect(usernameLoginRes.success).toBe(true);
+    expect(usernameLoginRes.user?.schoolId).toBe(newSchool.id);
+
+    // Test rejection with wrong PIN
+    const failRes = login('SUEZ_TECH_01', 'wrong_pin');
+    expect(failRes.success).toBe(false);
+    expect(failRes.error).toContain('الرقم السري');
+  });
+
+  it('should auto-generate a 6-digit random PIN if accessPin is omitted when adding a school', () => {
+    const autoPinSchool = saveSchool({
+      name: 'مدرسة أسوان الصناعية الميكانيكية',
+      code: 'ASWAN_IND_01',
+      directorate: 'مديرية التربية والتعليم بأسوان',
+      administration: 'إدارة أسوان التعليمية',
+      systemType: '3_years',
+      shiftType: 'single_morning',
+      workDaysScheme: 'sun_to_thu',
+      isActive: true,
+    });
+
+    expect(autoPinSchool.accessPin).toBeDefined();
+    expect(autoPinSchool.accessPin?.length).toBe(6);
+    expect(/^\d{6}$/.test(autoPinSchool.accessPin!)).toBe(true);
+
+    // Login with the auto-generated PIN
+    const res = login('ASWAN_IND_01', autoPinSchool.accessPin);
+    expect(res.success).toBe(true);
+    expect(getActiveSchoolId()).toBe(autoPinSchool.id);
   });
 });

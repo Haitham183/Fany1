@@ -91,6 +91,8 @@ export interface SchoolTenant {
   id: string;                      // e.g. 'sch_cairo_ind_01'
   name: string;                    // e.g. 'مدرسة العباسية الثانوية الصناعية الميكانيكية بنين'
   code: string;                    // e.g. '10201' (كود المدرسة المالي والإحصائي بوزارة التربية والتعليم)
+  accessPin?: string;              // الرقم السري المعتمد الصادر من المديرية لدخول حساب المدرسة
+  schoolUsername?: string;         // اسم مستخدم حساب المدرسة لتسجيل الدخول (كود المدرسة أو اسم مخصص)
   directorate: string;             // مديرية التربية والتعليم (مثل: القاهرة، الجيزة، الإسكندرية)
   administration: string;          // الإدارة التعليمية (مثل: إدارة الوايلي، إدارة وسط)
   systemType: SchoolSystemType;    // '3_years' | '5_years_advanced' | 'applied_technology' | 'dual_education'

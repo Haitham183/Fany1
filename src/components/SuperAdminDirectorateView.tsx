@@ -58,6 +58,10 @@ import {
   CalendarCheck,
   X,
   Edit3,
+  KeyRound,
+  Copy,
+  Printer,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -132,6 +136,9 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
   const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
   const [schoolFormName, setSchoolFormName] = useState('');
   const [schoolFormCode, setSchoolFormCode] = useState('');
+  const [schoolFormAccessPin, setSchoolFormAccessPin] = useState('');
+  const [schoolFormUsername, setSchoolFormUsername] = useState('');
+  const [showPinInForm, setShowPinInForm] = useState(false);
   const [schoolFormDirectorate, setSchoolFormDirectorate] = useState('مديرية التربية والتعليم بالقاهرة');
   const [schoolFormAdmin, setSchoolFormAdmin] = useState('إدارة الوايلي التعليمية');
   const [schoolFormSystem, setSchoolFormSystem] = useState<SchoolSystemType>('3_years');
@@ -140,6 +147,41 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
   const [schoolFormPrincipal, setSchoolFormPrincipal] = useState('');
   const [schoolFormPhone, setSchoolFormPhone] = useState('');
   const [schoolFormAddress, setSchoolFormAddress] = useState('');
+
+  // School PIN Security & Credential Slip States
+  const [revealedPinSchoolId, setRevealedPinSchoolId] = useState<string | null>(null);
+  const [credentialSlipSchool, setCredentialSlipSchool] = useState<SchoolTenant | null>(null);
+  const [isCredentialSlipModalOpen, setIsCredentialSlipModalOpen] = useState(false);
+  const [copyFeedbackText, setCopyFeedbackText] = useState<string | null>(null);
+
+  const generateRandomPin = () => {
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+    setSchoolFormAccessPin(pin);
+  };
+
+  const toggleRevealPin = (schoolId: string) => {
+    setRevealedPinSchoolId((prev) => (prev === schoolId ? null : schoolId));
+  };
+
+  const copySchoolCredentials = (s: SchoolTenant) => {
+    const text = `بيانات تسجيل الدخول لحساب المدرسة:
+المدرسة: ${s.name}
+كود المدرسة الوزاري: ${s.code}
+اسم المستخدم: ${s.schoolUsername || s.code}
+الرقم السري للمدرسة (PIN): ${s.accessPin || s.code}
+رابط البوابة: بوابة التعليم الفني المركزية`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
+    setCopyFeedbackText(`تم نسخ بيانات حساب (${s.name}) بنجاح!`);
+    setTimeout(() => setCopyFeedbackText(null), 3000);
+  };
+
+  const openCredentialSlip = (s: SchoolTenant) => {
+    setCredentialSlipSchool(s);
+    setIsCredentialSlipModalOpen(true);
+  };
 
   // Add Circular Modal
   const [isCircularModalOpen, setIsCircularModalOpen] = useState(false);
@@ -179,6 +221,10 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
     setEditingSchoolId(null);
     setSchoolFormName('');
     setSchoolFormCode('');
+    const randomPin = Math.floor(100000 + Math.random() * 900000).toString();
+    setSchoolFormAccessPin(randomPin);
+    setSchoolFormUsername('');
+    setShowPinInForm(true);
     setSchoolFormDirectorate('مديرية التربية والتعليم بالقاهرة');
     setSchoolFormAdmin('إدارة الوايلي التعليمية');
     setSchoolFormSystem('3_years');
@@ -195,6 +241,9 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
     setEditingSchoolId(s.id);
     setSchoolFormName(s.name);
     setSchoolFormCode(s.code);
+    setSchoolFormAccessPin(s.accessPin || s.code);
+    setSchoolFormUsername(s.schoolUsername || s.code);
+    setShowPinInForm(false);
     setSchoolFormDirectorate(s.directorate);
     setSchoolFormAdmin(s.administration);
     setSchoolFormSystem(s.systemType);
@@ -210,10 +259,12 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
     e.preventDefault();
     if (!schoolFormName.trim() || !schoolFormCode.trim()) return;
 
-    saveSchool({
+    const saved = saveSchool({
       id: editingSchoolId || undefined,
       name: schoolFormName.trim(),
       code: schoolFormCode.trim(),
+      accessPin: schoolFormAccessPin.trim() || undefined,
+      schoolUsername: schoolFormUsername.trim() || schoolFormCode.trim(),
       directorate: schoolFormDirectorate.trim(),
       administration: schoolFormAdmin.trim(),
       systemType: schoolFormSystem,
@@ -227,6 +278,10 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
 
     setIsSchoolModalOpen(false);
     refreshAll();
+
+    // Automatically present the official credential slip modal for confirmation & printing
+    setCredentialSlipSchool(saved);
+    setIsCredentialSlipModalOpen(true);
   };
 
   const handleDeleteSchool = (schoolId: string, schoolName: string) => {
@@ -489,6 +544,7 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
                     <th className="p-3">الإدارة التعليمية</th>
                     <th className="p-3">النظام والفترات</th>
                     <th className="p-3">مدير المدرسة</th>
+                    <th className="p-3 text-center">الرقم السري والاعتماد 🔐</th>
                     <th className="p-3 text-center">حضور الورش (85%)</th>
                     <th className="p-3 text-center">التحقق CBE</th>
                     <th className="p-3 text-center">الإجراء والتحكم</th>
@@ -531,6 +587,37 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
                         </td>
                         <td className="p-3 text-slate-700 dark:text-slate-300 font-semibold">
                           {s.principalName || 'غير مسجل'}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="inline-flex items-center gap-1 bg-amber-50/80 dark:bg-amber-950/30 px-2 py-0.5 rounded-xl border border-amber-200 dark:border-amber-800/50 text-[11px]">
+                            <span className="font-mono font-black text-amber-900 dark:text-amber-300 tracking-wider">
+                              {revealedPinSchoolId === s.id ? (s.accessPin || s.code) : '••••••'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleRevealPin(s.id)}
+                              className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer"
+                              title={revealedPinSchoolId === s.id ? 'إخفاء الرقم السري' : 'إظهار الرقم السري'}
+                            >
+                              {revealedPinSchoolId === s.id ? <EyeOff className="w-3.5 h-3.5 text-amber-600" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => copySchoolCredentials(s)}
+                              className="p-1 text-slate-500 hover:text-amber-600 cursor-pointer"
+                              title="نسخ بيانات الدخول"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openCredentialSlip(s)}
+                              className="p-1 text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                              title="بطاقة اعتماد المدرسة الرسمية (طباعة)"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                         <td className="p-3 text-center">
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
@@ -674,6 +761,50 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
                           <span className="font-mono">{s.phone}</span>
                         </div>
                       )}
+                    </div>
+
+                    {/* School Login Credentials Card Segment */}
+                    <div className="bg-amber-50/70 dark:bg-amber-950/20 p-3 rounded-2xl border border-amber-200/70 dark:border-amber-800/40 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 text-amber-950 dark:text-amber-200 font-bold">
+                          <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                          <span>الرقم السري للمدرسة:</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleRevealPin(s.id)}
+                            className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded transition cursor-pointer"
+                            title={revealedPinSchoolId === s.id ? 'إخفاء الرقم السري' : 'إظهار الرقم السري'}
+                          >
+                            {revealedPinSchoolId === s.id ? <EyeOff className="w-3.5 h-3.5 text-amber-600" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copySchoolCredentials(s)}
+                            className="p-1 text-slate-500 hover:text-amber-600 rounded transition cursor-pointer"
+                            title="نسخ بيانات الدخول"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openCredentialSlip(s)}
+                            className="p-1 text-indigo-600 hover:text-indigo-800 rounded transition cursor-pointer"
+                            title="بطاقة اعتماد المدرسة الرسمية (طباعة)"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[11px] text-slate-500 font-mono">
+                          كود الدخول: <span className="font-bold text-slate-800 dark:text-slate-200">{s.schoolUsername || s.code}</span>
+                        </span>
+                        <span className="font-mono text-xs font-black tracking-widest text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                          {revealedPinSchoolId === s.id ? (s.accessPin || s.code) : '••••••'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -1141,6 +1272,72 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
             />
           </div>
 
+          {/* School Credentials & Secret PIN Box */}
+          <div className="bg-amber-50/80 dark:bg-amber-950/30 p-4 rounded-2xl border-2 border-amber-500/40 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-600 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-amber-950 dark:text-amber-200">
+                    بيانات اعتماد الدخول والرقم السري للمدرسة
+                  </h4>
+                  <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                    يستخدمها مدير المدرسة لتسجيل الدخول إلى حساب مدرسته بالمنظومة
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={generateRandomPin}
+                className="text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1 rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer shrink-0"
+                title="توليد رقم سري عشوائي جديد"
+              >
+                <Sparkles className="w-3 h-3 text-slate-950" />
+                <span>توليد رقم سري 🎲</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="اسم المستخدم / معرف دخول المدرسة"
+                placeholder={schoolFormCode ? schoolFormCode : 'كود المدرسة الوزاري'}
+                value={schoolFormUsername}
+                onChange={(e) => setSchoolFormUsername(e.target.value)}
+                helperText="اسم المستخدم الرسمي لإدارة المدرسة (افتراضياً كود المدرسة)"
+              />
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  الرقم السري للمدرسة (Secret PIN) *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPinInForm ? 'text' : 'password'}
+                    value={schoolFormAccessPin}
+                    onChange={(e) => setSchoolFormAccessPin(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-slate-900 dark:text-white pl-10"
+                    placeholder="مثال: 749201"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPinInForm(!showPinInForm)}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    title={showPinInForm ? 'إخفاء الرقم السري' : 'إظهار الرقم السري'}
+                  >
+                    {showPinInForm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  يُسلم لإدارة المدرسة لتسجيل الدخول مباشرة لحساب المدرسة.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
             <Button variant="ghost" type="button" onClick={() => setIsSchoolModalOpen(false)}>
               إلغاء
@@ -1331,6 +1528,162 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
           </div>
         </form>
       </Modal>
+
+      {/* 4. Modal: Official School Credential Slip (بطاقة اعتماد وتشغيل حساب المدرسة) */}
+      <Modal
+        isOpen={isCredentialSlipModalOpen}
+        onClose={() => setIsCredentialSlipModalOpen(false)}
+        title="بطاقة اعتماد حساب المدرسة والرقم السري الرسمي"
+      >
+        {credentialSlipSchool && (
+          <div className="space-y-4 text-slate-800 dark:text-slate-200">
+            {/* Printable official container */}
+            <div id="school-credential-slip-print" className="p-5 bg-gradient-to-br from-amber-50/60 via-white to-slate-50 dark:from-slate-900 dark:to-slate-950 rounded-2xl border-2 border-amber-500/40 shadow-sm space-y-4">
+              {/* Slip Header */}
+              <div className="flex items-center justify-between border-b-2 border-amber-500/20 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-slate-900 dark:text-white">
+                      وزارة التربية والتعليم والتعليم الفني
+                    </h3>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 font-bold">
+                      {credentialSlipSchool.directorate} • قيادة التعليم الفني بالمحافظة
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left text-[11px] text-slate-500 font-mono">
+                  <span>تاريخ الاعتماد: </span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                    {new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' }).format(new Date())}
+                  </span>
+                </div>
+              </div>
+
+              {/* Title */}
+              <div className="text-center py-1">
+                <span className="inline-block bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 text-xs px-3 py-1 rounded-full font-black border border-amber-300 dark:border-amber-700">
+                  إخطار رسمي: بيانات تشغيل واعتماد حساب المدرسة الفنية 🏛️
+                </span>
+              </div>
+
+              {/* School Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-400 block text-[10.5px]">اسم المنشأة التعليمية:</span>
+                  <span className="font-black text-slate-900 dark:text-white text-sm">
+                    {credentialSlipSchool.name}
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-400 block text-[10.5px]">الإدارة التعليمية التابعة:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    {credentialSlipSchool.administration}
+                  </span>
+                </div>
+              </div>
+
+              {/* Big High-Security Credentials Box */}
+              <div className="bg-slate-950 text-white p-4 rounded-2xl border border-amber-500/50 shadow-md space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                  <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4" />
+                    بيانات تسجيل الدخول لحساب المدرسة:
+                  </span>
+                  <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                    حساب معتمد نشط ✓
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <span className="text-slate-400 text-[11px] block">اسم المستخدم / كود الدخول:</span>
+                    <span className="font-mono text-lg font-black text-amber-300 tracking-wider">
+                      {credentialSlipSchool.schoolUsername || credentialSlipSchool.code}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-900 p-3 rounded-xl border border-amber-500/40">
+                    <span className="text-slate-400 text-[11px] block">الرقم السري للمدرسة (PIN):</span>
+                    <span className="font-mono text-2xl font-black text-emerald-400 tracking-widest">
+                      {credentialSlipSchool.accessPin || credentialSlipSchool.code}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-300 leading-relaxed text-center">
+                  يتم الدخول عبر إدخال <strong>كود المدرسة</strong> في اسم المستخدم و<strong>الرقم السري للمدرسة</strong> في كلمة المرور.
+                </p>
+              </div>
+
+              {/* Instructions */}
+              <div className="text-[11px] text-slate-600 dark:text-slate-400 space-y-1 bg-amber-50/50 dark:bg-slate-800/40 p-3 rounded-xl border border-amber-200/50">
+                <span className="font-bold text-amber-800 dark:text-amber-300 block">تعليمات أمنية وتشغيلية:</span>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>يُسلم هذا الإخطار لمدير المدرسة شخصياً بموجب توقيع رسمي.</li>
+                  <li>يمنح هذا الحساب صلاحيات الإدارة التنفيذية الكاملة للمدرسة ومتابعة نسب الورش 85%.</li>
+                  <li>في حال فقدان الرقم السري، يمكن لقيادة المديرية إعادة ضبطه وتوليد رقم جديد فوراً.</li>
+                </ul>
+              </div>
+
+              {/* Signature stamp */}
+              <div className="flex items-center justify-between pt-2 text-xs">
+                <div className="text-slate-500">
+                  <span>مسئول الرقابة الإلكترونية: </span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">معتمد إلكترونياً</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 block text-[10px]">يعتمد مدير عام التعليم الفني:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">د. حسام الدين عبد القادر</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setIsCredentialSlipModalOpen(false)}
+              >
+                إغلاق
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  leftIcon={<Copy className="w-4 h-4 text-amber-600" />}
+                  onClick={() => copySchoolCredentials(credentialSlipSchool)}
+                >
+                  نسخ البيانات 📋
+                </Button>
+
+                <Button
+                  variant="primary"
+                  type="button"
+                  leftIcon={<Printer className="w-4 h-4" />}
+                  onClick={() => window.print()}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+                >
+                  طباعة بطاقة الاعتماد 🖨️
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Toast Notification */}
+      {copyFeedbackText && (
+        <div className="fixed bottom-6 left-6 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{copyFeedbackText}</span>
+        </div>
+      )}
     </div>
   );
 };
