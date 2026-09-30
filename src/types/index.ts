@@ -7,6 +7,7 @@ export type UserRole =
   | 'teacher'            // معلم / مدرب ورشة
   | 'parent'             // ولي الأمر
   | 'system_admin'       // مدير النظام التقني (إدارة الحسابات والإعدادات فقط)
+  | 'directorate_admin'  // مشرف المديرية والإدارة التعليمية (لوحة تحكم متعددة المدارس)
   | 'external_verifier'; // المحقق الخارجي (حساب مؤقت للقراءة فقط)
 
 export type PortalType =
@@ -17,7 +18,8 @@ export type PortalType =
   | 'affairs'
   | 'social_worker'
   | 'teacher'
-  | 'admin';
+  | 'admin'
+  | 'directorate';
 
 export interface UserPermission {
   canTakeAttendance: boolean;       // تسجيل الحضور والغياب للورش والفصول
@@ -81,6 +83,26 @@ export interface Holiday {
   type: HolidayType;        // official | emergency
   description?: string;     // سبب العطلة أو القرار الوزاري / قرار المحافظ
   isTermBreak?: boolean;    // هل هي إجازة نصف العام
+}
+
+// هيكل المنشأة التعليمية / المدرسة (Multi-Tenancy)
+export interface SchoolTenant {
+  id: string;                      // e.g. 'sch_cairo_ind_01'
+  name: string;                    // e.g. 'مدرسة العباسية الثانوية الصناعية الميكانيكية بنين'
+  code: string;                    // e.g. '10201' (كود المدرسة المالي والإحصائي بوزارة التربية والتعليم)
+  directorate: string;             // مديرية التربية والتعليم (مثل: القاهرة، الجيزة، الإسكندرية)
+  administration: string;          // الإدارة التعليمية (مثل: إدارة الوايلي، إدارة وسط)
+  systemType: SchoolSystemType;    // '3_years' | '5_years_advanced' | 'applied_technology' | 'dual_education'
+  shiftType: SchoolShiftType;      // 'single_morning' | 'two_shifts' | 'single_full_day'
+  workDaysScheme: WorkDaysScheme;  // 'sun_to_thu' | 'sat_to_thu' | 'sat_to_wed'
+  logoUrl?: string;
+  headerImageUrl?: string;
+  address?: string;
+  phone?: string;
+  principalName?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // إعدادات المدرسة والقواعد القانونية القابلة للضبط [قابل للضبط]

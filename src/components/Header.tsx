@@ -57,6 +57,7 @@ interface HeaderProps {
   onSelectStudentReport?: (studentId: string) => void;
   onSelectStudentAttendance?: (classId: string) => void;
   onOpenCommandPalette?: () => void;
+  onOpenSchoolSwitcher?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -78,6 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectStudentReport,
   onSelectStudentAttendance,
   onOpenCommandPalette,
+  onOpenSchoolSwitcher,
 }) => {
   const [alerts, setAlerts] = useState<EarlyWarningAlert[]>([]);
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -177,6 +179,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case 'directorate_admin':
+        return { label: 'مسئول المديرية 🏛️', bg: 'bg-amber-100 text-amber-900 border-amber-400' };
       case 'principal':
         return { label: 'مدير المدرسة', bg: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
       case 'affairs_deputy':
@@ -289,8 +293,19 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-sm sm:text-base font-black text-white leading-normal truncate">
                 {schoolConfig.name}
               </h1>
-              <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold shrink-0">
-                <Sparkles className="w-3 h-3 text-amber-400" /> نظام الجدارات المطور
+              {onOpenSchoolSwitcher && (
+                <button
+                  type="button"
+                  onClick={onOpenSchoolSwitcher}
+                  className="inline-flex items-center gap-1 text-[10.5px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40 font-bold shrink-0 transition cursor-pointer"
+                  title="تبديل المدرسة النشطة"
+                >
+                  <Building2 className="w-3 h-3 text-amber-400" />
+                  <span>تبديل المدرسة ⟲</span>
+                </button>
+              )}
+              <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30 font-bold shrink-0">
+                <Sparkles className="w-3 h-3 text-cyan-400" /> نظام الجدارات المطور
               </span>
             </div>
             <p className="text-[11px] text-slate-400 truncate">

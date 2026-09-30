@@ -18,6 +18,7 @@ import {
   AssessmentCalendarEvent,
   SchoolConfig,
   OfflineMediaEvidence,
+  SchoolTenant,
 } from '@/types';
 
 export interface PendingSyncItem {
@@ -30,6 +31,7 @@ export interface PendingSyncItem {
 }
 
 export class EgyptianSchoolDatabase extends Dexie {
+  schools!: Table<SchoolTenant, string>;
   students!: Table<Student, string>;
   users!: Table<User, string>;
   departments!: Table<Department, string>;
@@ -53,6 +55,7 @@ export class EgyptianSchoolDatabase extends Dexie {
   constructor() {
     super('EgyptianSchoolDB_v2');
     this.version(1).stores({
+      schools: 'id, code, name, directorate, administration, isActive, createdAt',
       students: 'id, nationalId, nationalIdHash, studentCode, fullName, gradeLevel, departmentId, classId, status, parentAccessCode, updated_at',
       users: 'id, username, role, departmentId, schoolId, isInternalVerifier, updated_at',
       departments: 'id, code, name, schoolId, updated_at',

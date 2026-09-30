@@ -38,6 +38,7 @@ export const RoleDashboardRouter: React.FC<RoleDashboardRouterProps> = (props) =
   const effectiveRole = activeRoleOverride || currentUser.role;
 
   const roleLabels: Record<UserRole, string> = {
+    directorate_admin: 'مسؤول المديرية المركزية 🏛️',
     principal: 'مدير المدرسة',
     affairs_deputy: 'وكيل شئون الطلاب',
     affairs_officer: 'مسؤول شئون الطلاب',
@@ -51,6 +52,7 @@ export const RoleDashboardRouter: React.FC<RoleDashboardRouterProps> = (props) =
 
   const renderDashboard = () => {
     switch (effectiveRole) {
+      case 'directorate_admin':
       case 'principal':
       case 'system_admin':
         return <PrincipalDashboard {...props} />;

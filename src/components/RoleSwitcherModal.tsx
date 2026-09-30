@@ -24,6 +24,8 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
 
   const getRoleIcon = (role: string) => {
     switch (role) {
+      case 'directorate_admin':
+        return <ShieldCheck className="w-5 h-5 text-amber-600" />;
       case 'principal':
         return <ShieldCheck className="w-5 h-5 text-emerald-600" />;
       case 'affairs_deputy':
@@ -43,6 +45,8 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
 
   const getRoleDescription = (role: string) => {
     switch (role) {
+      case 'directorate_admin':
+        return 'مسئول المديرية المركزية: إدارة المدارس المتعددة، متابعة إحصائيات الغياب والجدارات على مستوى المحافظة، وإضافة المدارس الجديدة.';
       case 'principal':
         return 'مدير المدرسة: صلاحيات إدارية كاملة تشمل إدارة المستخدمين، إعدادات المدرسة، نسب الحضور العامة، واعتماد القرارات والإنذارات.';
       case 'affairs_deputy':

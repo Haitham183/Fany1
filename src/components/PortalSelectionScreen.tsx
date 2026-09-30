@@ -182,6 +182,23 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   // Staff Portals Definitions for Pills & Quick Fill
   const staffPortals: StaffPortalInfo[] = [
     {
+      id: 'directorate',
+      roleKey: 'directorate_admin',
+      title: 'قيادة المديرية والمدارس',
+      subtitle: 'التحكم المركزي ومتابعة المحافظة',
+      badge: 'إدارة مركزية 🏛️',
+      icon: Building2,
+      defaultUsername: 'directorate',
+      color: {
+        pillActive: 'bg-amber-600 text-white font-black shadow-lg shadow-amber-600/25 border-amber-300 ring-2 ring-amber-400/50',
+        borderActive: 'border-amber-500/50',
+        bgGlow: 'from-amber-600/20 via-slate-900 to-slate-950',
+        accent: 'text-amber-400',
+        badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      },
+      description: 'إدارة المدارس المتعددة بالمديرية، مؤشرات الأداء التراكمية، ومتابعة الجدارات والغياب لجميع المدارس.',
+    },
+    {
       id: 'principal',
       roleKey: 'principal',
       title: 'مدير عام المدرسة',

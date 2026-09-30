@@ -26,6 +26,7 @@ import {
   Layers,
   Sparkles,
   Search,
+  School,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -82,6 +83,67 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Build role-tailored focused sections
   const sections = useMemo<NavSection[]>(() => {
     const list: NavSection[] = [];
+
+    // 0. DIRECTORATE ADMIN MENU (Super Admin / Directorate Level)
+    if (role === 'directorate_admin') {
+      list.push({
+        title: 'قيادة المديرية والمدارس',
+        items: [
+          {
+            id: 'directorate',
+            label: 'لوحة قيادة المديرية والمدارس 🏛️',
+            icon: School,
+            badge: 'مركزي',
+            badgeColor: 'bg-amber-500 text-white',
+            visible: true,
+          },
+          {
+            id: 'dashboard',
+            label: 'لوحة المدرسة النشطة',
+            icon: LayoutDashboard,
+            visible: true,
+          },
+          {
+            id: 'census',
+            label: 'الإحصاء التراكمي (5 مواظبة)',
+            icon: TrendingUp,
+            visible: true,
+          },
+          {
+            id: 'competencies',
+            label: 'منظومة الجدارات الموحدة (CBE)',
+            icon: Award,
+            visible: true,
+          },
+          {
+            id: 'official_sheets',
+            label: 'دفاتر 41 وسر 1 للمدارس',
+            icon: FileText,
+            visible: true,
+          },
+        ],
+      });
+
+      list.push({
+        title: 'الرقابة وإدارة النظام',
+        items: [
+          {
+            id: 'users',
+            label: 'حسابات مديري المدارس والفرق',
+            icon: UserCheck,
+            visible: true,
+          },
+          {
+            id: 'settings',
+            label: 'الإعدادات والقواعد العامة',
+            icon: Sliders,
+            visible: true,
+          },
+        ],
+      });
+
+      return list;
+    }
 
     // 1. TEACHER MENU (Focused on Workshop, CBE, Rosters, Safety)
     if (role === 'teacher') {
@@ -341,6 +403,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     list.push({
       title: 'الإدارة والنظام',
       items: [
+        {
+          id: 'directorate',
+          label: 'إدارة المدارس والمديرية',
+          icon: School,
+          visible: role === 'principal' || role === 'system_admin',
+        },
         {
           id: 'settings',
           label: 'إعدادات المدرسة والقواعد',

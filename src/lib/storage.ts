@@ -31,6 +31,7 @@ import {
   AssessmentCalendarEvent,
   AuditLogEntry,
   WorkDaysScheme,
+  SchoolTenant,
 } from '@/types';
 import {
   MOCK_USERS,
@@ -47,6 +48,7 @@ import {
   MOCK_STUDENT_PORTFOLIOS,
   SCHOOL_CONFIG,
   DEFAULT_EGYPTIAN_HOLIDAYS,
+  DEFAULT_SCHOOLS,
 } from './mockData';
 import { db } from './db';
 import { runLocalStorageToIndexedDbMigration, hashNationalId, generateParentAccessCode, MIGRATION_KEY } from './migration';
@@ -73,6 +75,8 @@ const STORAGE_KEYS = {
   GRIEVANCES: 'egyptian_school_grievances',
   ASSESSMENT_CALENDAR: 'egyptian_school_assessment_calendar',
   IS_AUTHENTICATED: 'egyptian_school_is_auth',
+  SCHOOLS: 'egyptian_school_schools_list',
+  ACTIVE_SCHOOL_ID: 'egyptian_active_school_id',
 };
 
 // In-Memory Safe Reactive Cache for PII (Students & Social Cases) to prevent storing National IDs in LocalStorage
@@ -215,6 +219,115 @@ export const sortArabicAlphabetically = (a: string, b: string): number => {
 
 export const sortStudentsAlphabetically = (studentList: Student[]): Student[] => {
   return [...studentList].sort((a, b) => sortArabicAlphabetically(a.fullName, b.fullName));
+};
+
+// =========================================================================
+// School Tenants (Multi-Tenancy)
+// =========================================================================
+
+export const getSchools = (): SchoolTenant[] => {
+  return getStoredData<SchoolTenant[]>(STORAGE_KEYS.SCHOOLS, DEFAULT_SCHOOLS);
+};
+
+export const getActiveSchoolId = (): string => {
+  if (typeof window === 'undefined') return DEFAULT_SCHOOLS[0].id;
+  return localStorage.getItem(STORAGE_KEYS.ACTIVE_SCHOOL_ID) || DEFAULT_SCHOOLS[0].id;
+};
+
+export const getActiveSchool = (): SchoolTenant => {
+  const schools = getSchools();
+  const activeId = getActiveSchoolId();
+  return schools.find((s) => s.id === activeId) || schools[0] || DEFAULT_SCHOOLS[0];
+};
+
+export const setActiveSchoolId = (schoolId: string): boolean => {
+  if (typeof window === 'undefined') return false;
+  localStorage.setItem(STORAGE_KEYS.ACTIVE_SCHOOL_ID, schoolId);
+
+  // Update current school config to match the selected school tenant
+  const schools = getSchools();
+  const selectedSchool = schools.find((s) => s.id === schoolId);
+  if (selectedSchool) {
+    const currentConfig = getSchoolConfig();
+    const updatedConfig: SchoolConfig = {
+      ...currentConfig,
+      schoolId: selectedSchool.id,
+      name: selectedSchool.name,
+      directorate: selectedSchool.directorate,
+      administration: selectedSchool.administration,
+      schoolSystemType: selectedSchool.systemType,
+      schoolShiftType: selectedSchool.shiftType,
+      workDaysScheme: selectedSchool.workDaysScheme,
+      address: selectedSchool.address || currentConfig.address,
+      phone: selectedSchool.phone || currentConfig.phone,
+      managerName: selectedSchool.principalName || currentConfig.managerName,
+    };
+    setStoredData(STORAGE_KEYS.CONFIG, updatedConfig);
+  }
+
+  try {
+    window.dispatchEvent(new Event('egyptian_school_storage_update'));
+    if (typeof CustomEvent !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('egyptian_school_tenant_change', { detail: { schoolId } }));
+    }
+  } catch {
+    // Non-blocking in node test environments
+  }
+  return true;
+};
+
+export const saveSchool = (schoolData: Partial<SchoolTenant> & { name: string; code: string }): SchoolTenant => {
+  const schools = getSchools();
+  let updatedSchool: SchoolTenant;
+  let updatedList: SchoolTenant[];
+
+  if (schoolData.id) {
+    const existing = schools.find((s) => s.id === schoolData.id);
+    updatedSchool = {
+      ...(existing || DEFAULT_SCHOOLS[0]),
+      ...schoolData,
+      updatedAt: new Date().toISOString(),
+    };
+    updatedList = schools.map((s) => (s.id === schoolData.id ? updatedSchool : s));
+  } else {
+    updatedSchool = {
+      id: `sch_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: schoolData.name,
+      code: schoolData.code,
+      directorate: schoolData.directorate || 'مديرية التربية والتعليم',
+      administration: schoolData.administration || 'إدارة التعليم الفني',
+      systemType: schoolData.systemType || '3_years',
+      shiftType: schoolData.shiftType || 'single_morning',
+      workDaysScheme: schoolData.workDaysScheme || 'sun_to_thu',
+      address: schoolData.address || '',
+      phone: schoolData.phone || '',
+      principalName: schoolData.principalName || '',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    updatedList = [...schools, updatedSchool];
+  }
+
+  setStoredData(STORAGE_KEYS.SCHOOLS, updatedList);
+  if (typeof window !== 'undefined') {
+    db.schools.put(updatedSchool).catch(() => {});
+  }
+
+  return updatedSchool;
+};
+
+export const deleteSchool = (schoolId: string): boolean => {
+  const schools = getSchools();
+  if (schools.length <= 1) return false; // Prevent deleting the last remaining school
+  const filtered = schools.filter((s) => s.id !== schoolId);
+  setStoredData(STORAGE_KEYS.SCHOOLS, filtered);
+  if (typeof window !== 'undefined') {
+    db.schools.delete(schoolId).catch(() => {});
+  }
+  if (getActiveSchoolId() === schoolId) {
+    setActiveSchoolId(filtered[0].id);
+  }
+  return true;
 };
 
 // =========================================================================

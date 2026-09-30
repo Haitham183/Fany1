@@ -55,6 +55,8 @@ import { OfflineSyncBanner } from '@/components/OfflineSyncBanner';
 import { PortalType, SocialCaseRecord } from '@/types';
 import { ToastProvider } from '@/components/ui';
 import { CommandPaletteModal } from '@/components/CommandPaletteModal';
+import { SuperAdminDirectorateView } from '@/components/SuperAdminDirectorateView';
+import { SchoolSwitcherModal } from '@/components/SchoolSwitcherModal';
 import { normalizeTabId } from '@/lib/tabRouter';
 
 export default function HomePage() {
@@ -83,11 +85,13 @@ function MainAppContent() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedReportStudentId, setSelectedReportStudentId] = useState<string | undefined>(undefined);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState<boolean>(false);
+  const [isSchoolSwitcherOpen, setIsSchoolSwitcherOpen] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
 
   const isFullAdmin =
+    currentUser.role === 'directorate_admin' ||
     currentUser.role === 'principal' ||
     currentUser.role === 'affairs_deputy' ||
     currentUser.role === 'affairs_officer';
@@ -168,9 +172,15 @@ function MainAppContent() {
       refreshAllData();
     };
 
+    const handleTenantChange = () => {
+      refreshAllData();
+    };
+
     window.addEventListener('egyptian_school_storage_update', handleStorageUpdate);
+    window.addEventListener('egyptian_school_tenant_change', handleTenantChange);
     return () => {
       window.removeEventListener('egyptian_school_storage_update', handleStorageUpdate);
+      window.removeEventListener('egyptian_school_tenant_change', handleTenantChange);
       cleanupRealtime();
     };
   }, []);
@@ -184,7 +194,9 @@ function MainAppContent() {
     setCurrentUser(user);
     setCurrentUserState(user);
 
-    if (user.role === 'teacher') {
+    if (user.role === 'directorate_admin') {
+      handleNavigate('directorate');
+    } else if (user.role === 'teacher') {
       handleNavigate('attendance');
     } else if (user.role === 'dept_head') {
       handleNavigate('departments');
@@ -219,7 +231,9 @@ function MainAppContent() {
     setIsAuthenticated(true);
     setIsParentPortalOpen(false);
 
-    if (portal === 'teacher' || user.role === 'teacher') {
+    if (portal === 'directorate' || user.role === 'directorate_admin') {
+      handleNavigate('directorate');
+    } else if (portal === 'teacher' || user.role === 'teacher') {
       handleNavigate('attendance');
     } else if (portal === 'dept_head' || user.role === 'dept_head') {
       handleNavigate('departments');
@@ -307,6 +321,7 @@ function MainAppContent() {
           handleNavigate('attendance');
         }}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onOpenSchoolSwitcher={() => setIsSchoolSwitcherOpen(true)}
       />
 
       {/* Main Layout: Sidebar on Right (RTL) + Scrollable Main Content */}
@@ -332,6 +347,16 @@ function MainAppContent() {
 
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 max-w-full overflow-y-auto custom-scrollbar transition-all duration-300">
+          {activeTab === 'directorate' && (
+            <SuperAdminDirectorateView
+              currentUser={currentUser}
+              onNavigateToSchool={(_schoolId) => {
+                refreshAllData();
+                handleNavigate('dashboard');
+              }}
+            />
+          )}
+
           {activeTab === 'dashboard' && (
             <DashboardView
               students={authorizedStudents}
@@ -564,6 +589,20 @@ function MainAppContent() {
         }}
         onOpenRoleSwitcher={() => setIsRoleModalOpen(true)}
         onLogout={handleLogout}
+      />
+
+      {/* School Switcher Modal */}
+      <SchoolSwitcherModal
+        isOpen={isSchoolSwitcherOpen}
+        onClose={() => setIsSchoolSwitcherOpen(false)}
+        currentUser={currentUser}
+        onSchoolSwitched={(_school) => {
+          refreshAllData();
+        }}
+        onManageSchools={() => {
+          setIsSchoolSwitcherOpen(false);
+          handleNavigate('directorate');
+        }}
       />
 
       {/* Persistent PWA & Offline Sync Status Banner */}

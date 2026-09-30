@@ -20,6 +20,7 @@ export type CanonicalTabId =
   | 'ai_prediction'
   | 'settings'
   | 'users'
+  | 'directorate'
   | 'parent_portal';
 
 export function normalizeTabId(rawTab: string): CanonicalTabId {
@@ -162,6 +163,14 @@ export function normalizeTabId(rawTab: string): CanonicalTabId {
     case 'guardian':
       return 'parent_portal';
 
+    // 18. Directorate & Multi-School Management
+    case 'directorate':
+    case 'schools':
+    case 'schools_management':
+    case 'multi_school':
+    case 'super_admin':
+      return 'directorate';
+
     default:
       return 'dashboard';
   }
@@ -231,6 +240,10 @@ export const TAB_META: Record<CanonicalTabId, { label: string; description: stri
   users: {
     label: 'إدارة المستخدمين والصلاحيات',
     description: 'إدارة الكادر التعليمي والإداري وتعيين الأدوار الفنية',
+  },
+  directorate: {
+    label: 'المديرية والمدارس الفنية',
+    description: 'إدارة شبكة المدارس الفنية الصناعية ولوحة المؤشرات المجمعة',
   },
   parent_portal: {
     label: 'بوابة ولي الأمر',

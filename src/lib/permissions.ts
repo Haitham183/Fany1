@@ -16,6 +16,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
   Record<UserRole, { V: boolean; C: boolean; A: boolean }>
 > = {
   student_admissions: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: true, A: true },
     affairs_deputy: { V: true, C: true, A: true },
     affairs_officer: { V: true, C: true, A: false },
@@ -27,6 +28,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: false, C: false, A: false },
   },
   daily_attendance: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: true, C: false, A: true },
     affairs_officer: { V: true, C: true, A: false },
@@ -38,6 +40,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: true, C: false, A: false },
   },
   excuses_management: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: true, C: true, A: true },
     affairs_officer: { V: true, C: true, A: false },
@@ -49,6 +52,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: false, C: false, A: false },
   },
   official_notices: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: true, C: true, A: true },
     affairs_officer: { V: true, C: true, A: false },
@@ -60,6 +64,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: false, C: false, A: false },
   },
   expulsion_reinstatement: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: true, C: true, A: false }, // يقترح
     affairs_officer: { V: false, C: false, A: false },
@@ -71,6 +76,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: false, C: false, A: false },
   },
   competencies_evaluation: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: false, C: false, A: false },
     affairs_officer: { V: false, C: false, A: false },
@@ -82,6 +88,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: true, C: false, A: false }, // قراءة فقط أثناء الزيارة
   },
   internal_verification: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: false, C: false, A: false },
     affairs_officer: { V: false, C: false, A: false },
@@ -93,6 +100,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: true, C: true, A: false },
   },
   social_cases: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: true, C: false, A: false }, // يرى ملخصاً فقط
     affairs_officer: { V: false, C: false, A: false },
@@ -104,6 +112,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: false, C: false, A: false },
   },
   user_management: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: true, A: true },
     affairs_deputy: { V: false, C: false, A: false },
     affairs_officer: { V: false, C: false, A: false },
@@ -115,6 +124,7 @@ export const ROLE_PERMISSION_MATRIX: Record<
     external_verifier: { V: false, C: false, A: false },
   },
   school_settings: {
+    directorate_admin: { V: true, C: true, A: true },
     principal: { V: true, C: false, A: true },
     affairs_deputy: { V: false, C: false, A: false },
     affairs_officer: { V: false, C: false, A: false },
