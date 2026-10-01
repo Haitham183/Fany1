@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { User, SchoolConfig, PortalType, SchoolTenant } from '@/types';
+import { tabToPath } from '@/lib/tabRouter';
 import {
   LayoutDashboard,
   Wrench,
@@ -638,8 +639,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   const Icon = item.icon;
 
                   return (
-                    <button
+                    <Link
                       key={item.id}
+                      href={tabToPath(item.id)}
                       onClick={() => {
                         onSelectTab(item.id);
                         if (isOpenMobile) onCloseMobile();
@@ -665,7 +667,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           {item.badge}
                         </span>
                       )}
-                    </button>
+                    </Link>
                   );
                 })}
             </div>

@@ -208,6 +208,170 @@ export function normalizeTabId(rawTab: string): CanonicalTabId {
   }
 }
 
+/**
+ * Maps a canonical tab or alias to its clean URL path in the web application.
+ */
+export function tabToPath(rawTab: CanonicalTabId | string): string {
+  const normalized = normalizeTabId(rawTab);
+  switch (normalized) {
+    case 'directorate':
+      return '/directorate';
+    case 'directorate_schools':
+      return '/directorate/schools';
+    case 'directorate_competencies':
+      return '/directorate/competencies';
+    case 'directorate_attendance':
+      return '/directorate/attendance';
+    case 'directorate_circulars':
+      return '/directorate/circulars';
+    case 'directorate_inspection':
+      return '/directorate/inspection';
+    case 'dashboard':
+      return '/dashboard';
+    case 'attendance':
+      return '/attendance';
+    case 'competencies':
+      return '/competencies';
+    case 'safety':
+      return '/safety';
+    case 'affairs':
+      return '/affairs';
+    case 'transfers':
+      return '/transfers';
+    case 'class_rosters':
+      return '/class-rosters';
+    case 'student_report':
+      return '/student-report';
+    case 'official_sheets':
+      return '/official-sheets';
+    case 'notices':
+      return '/notices';
+    case 'departments':
+      return '/departments';
+    case 'census':
+      return '/census';
+    case 'social_portal':
+      return '/social';
+    case 'ai_prediction':
+      return '/ai-prediction';
+    case 'settings':
+      return '/settings';
+    case 'users':
+      return '/users';
+    case 'parent_portal':
+      return '/parent';
+    default:
+      return '/dashboard';
+  }
+}
+
+/**
+ * Maps a URL pathname (e.g. '/attendance', '/directorate/schools', '/class-rosters') back to CanonicalTabId.
+ */
+export function pathToTab(pathname: string): CanonicalTabId {
+  if (!pathname || pathname === '/' || pathname === '') return 'dashboard';
+  const clean = pathname.trim().replace(/^\/+|\/+$/g, '').toLowerCase();
+
+  switch (clean) {
+    case 'parent':
+    case 'parent-portal':
+    case 'parent_portal':
+      return 'parent_portal';
+
+    case 'directorate':
+    case 'directorate/overview':
+      return 'directorate';
+
+    case 'directorate/schools':
+    case 'schools':
+      return 'directorate_schools';
+
+    case 'directorate/competencies':
+    case 'directorate/cbe':
+      return 'directorate_competencies';
+
+    case 'directorate/attendance':
+    case 'directorate/census':
+      return 'directorate_attendance';
+
+    case 'directorate/circulars':
+    case 'circulars':
+      return 'directorate_circulars';
+
+    case 'directorate/inspection':
+    case 'inspection':
+      return 'directorate_inspection';
+
+    case 'dashboard':
+    case 'main':
+    case 'home':
+      return 'dashboard';
+
+    case 'attendance':
+      return 'attendance';
+
+    case 'competencies':
+    case 'cbe':
+      return 'competencies';
+
+    case 'safety':
+      return 'safety';
+
+    case 'affairs':
+    case 'student-affairs':
+    case 'student_affairs':
+      return 'affairs';
+
+    case 'transfers':
+      return 'transfers';
+
+    case 'class-rosters':
+    case 'class_rosters':
+    case 'rosters':
+      return 'class_rosters';
+
+    case 'student-report':
+    case 'student_report':
+    case 'student-card':
+    case 'report-card':
+      return 'student_report';
+
+    case 'official-sheets':
+    case 'official_sheets':
+    case 'ministry-sheets':
+    case 'ministry_sheets':
+      return 'official_sheets';
+
+    case 'notices':
+      return 'notices';
+
+    case 'departments':
+      return 'departments';
+
+    case 'census':
+      return 'census';
+
+    case 'social':
+    case 'social-portal':
+    case 'social_portal':
+      return 'social_portal';
+
+    case 'ai-prediction':
+    case 'ai_prediction':
+    case 'ai':
+      return 'ai_prediction';
+
+    case 'settings':
+      return 'settings';
+
+    case 'users':
+      return 'users';
+
+    default:
+      return normalizeTabId(clean);
+  }
+}
+
 export const TAB_META: Record<CanonicalTabId, { label: string; description: string }> = {
   dashboard: {
     label: 'الرئيسية',

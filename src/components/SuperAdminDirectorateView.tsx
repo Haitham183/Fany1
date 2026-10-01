@@ -425,7 +425,24 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveWindow(tab.id)}
+              onClick={() => {
+                setActiveWindow(tab.id);
+                if (onNavigateTab) {
+                  const mapped =
+                    tab.id === 'schools_control'
+                      ? 'directorate_schools'
+                      : tab.id === 'competency_audit'
+                      ? 'directorate_competencies'
+                      : tab.id === 'attendance_observatory'
+                      ? 'directorate_attendance'
+                      : tab.id === 'circulars_directives'
+                      ? 'directorate_circulars'
+                      : tab.id === 'inspection_logs'
+                      ? 'directorate_inspection'
+                      : 'directorate';
+                  onNavigateTab(mapped);
+                }
+              }}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 ${
                 isActive
                   ? 'bg-amber-500 text-slate-950 shadow-md font-black ring-2 ring-amber-400/50'

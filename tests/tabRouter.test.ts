@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeTabId, TAB_META, canRoleAccessTab, getDefaultTabForRole } from '../src/lib/tabRouter';
+import {
+  normalizeTabId,
+  TAB_META,
+  canRoleAccessTab,
+  getDefaultTabForRole,
+  tabToPath,
+  pathToTab,
+} from '../src/lib/tabRouter';
 
 describe('tabRouter & normalizeTabId', () => {
   it('normalizes canonical tab IDs properly', () => {
@@ -169,3 +176,59 @@ describe('Role-Based Tab Access (canRoleAccessTab & getDefaultTabForRole)', () =
     expect(getDefaultTabForRole('system_admin')).toBe('dashboard');
   });
 });
+
+describe('URL Path Mapping (tabToPath & pathToTab)', () => {
+  it('correctly maps tabs to clean URL routes', () => {
+    expect(tabToPath('directorate')).toBe('/directorate');
+    expect(tabToPath('directorate_schools')).toBe('/directorate/schools');
+    expect(tabToPath('directorate_competencies')).toBe('/directorate/competencies');
+    expect(tabToPath('directorate_attendance')).toBe('/directorate/attendance');
+    expect(tabToPath('directorate_circulars')).toBe('/directorate/circulars');
+    expect(tabToPath('directorate_inspection')).toBe('/directorate/inspection');
+    expect(tabToPath('dashboard')).toBe('/dashboard');
+    expect(tabToPath('attendance')).toBe('/attendance');
+    expect(tabToPath('competencies')).toBe('/competencies');
+    expect(tabToPath('safety')).toBe('/safety');
+    expect(tabToPath('affairs')).toBe('/affairs');
+    expect(tabToPath('transfers')).toBe('/transfers');
+    expect(tabToPath('class_rosters')).toBe('/class-rosters');
+    expect(tabToPath('student_report')).toBe('/student-report');
+    expect(tabToPath('official_sheets')).toBe('/official-sheets');
+    expect(tabToPath('notices')).toBe('/notices');
+    expect(tabToPath('departments')).toBe('/departments');
+    expect(tabToPath('census')).toBe('/census');
+    expect(tabToPath('social_portal')).toBe('/social');
+    expect(tabToPath('ai_prediction')).toBe('/ai-prediction');
+    expect(tabToPath('settings')).toBe('/settings');
+    expect(tabToPath('users')).toBe('/users');
+    expect(tabToPath('parent_portal')).toBe('/parent');
+  });
+
+  it('correctly maps URL pathnames back to canonical tab IDs', () => {
+    expect(pathToTab('/directorate')).toBe('directorate');
+    expect(pathToTab('/directorate/schools')).toBe('directorate_schools');
+    expect(pathToTab('/directorate/competencies')).toBe('directorate_competencies');
+    expect(pathToTab('/directorate/attendance')).toBe('directorate_attendance');
+    expect(pathToTab('/directorate/circulars')).toBe('directorate_circulars');
+    expect(pathToTab('/directorate/inspection')).toBe('directorate_inspection');
+    expect(pathToTab('/dashboard')).toBe('dashboard');
+    expect(pathToTab('/attendance')).toBe('attendance');
+    expect(pathToTab('/competencies')).toBe('competencies');
+    expect(pathToTab('/safety')).toBe('safety');
+    expect(pathToTab('/affairs')).toBe('affairs');
+    expect(pathToTab('/transfers')).toBe('transfers');
+    expect(pathToTab('/class-rosters')).toBe('class_rosters');
+    expect(pathToTab('/student-report')).toBe('student_report');
+    expect(pathToTab('/official-sheets')).toBe('official_sheets');
+    expect(pathToTab('/notices')).toBe('notices');
+    expect(pathToTab('/departments')).toBe('departments');
+    expect(pathToTab('/census')).toBe('census');
+    expect(pathToTab('/social')).toBe('social_portal');
+    expect(pathToTab('/ai-prediction')).toBe('ai_prediction');
+    expect(pathToTab('/settings')).toBe('settings');
+    expect(pathToTab('/users')).toBe('users');
+    expect(pathToTab('/parent')).toBe('parent_portal');
+    expect(pathToTab('/')).toBe('dashboard');
+  });
+});
+
