@@ -508,30 +508,30 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
             {/* =========================================================================
                 NEW SECTION: نظام الفترات الدراسية وأيام العمل الأسبوعية
                ========================================================================= */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white rounded-2xl p-5 border border-amber-500/30 space-y-5 shadow-lg">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+            <div className="bg-slate-50 text-slate-900 rounded-2xl p-5 border border-slate-200 space-y-5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm sm:text-base text-white">
+                    <h3 className="font-black text-sm sm:text-base text-slate-900">
                       نظام الفترات الدراسية وجدول أيام العمل الأسبوعية بالمدرسة
                     </h3>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       تحديد ما إذا كانت المدرسة تعمل فترة واحدة أو فترتين، وتحديد أيام العمل الرسمية (5 أو 6 أيام)
                     </p>
                   </div>
                 </div>
 
-                <span className="bg-amber-500/20 text-amber-300 text-[11px] font-bold px-3 py-1 rounded-full border border-amber-500/30">
+                <span className="bg-blue-50 text-blue-700 text-[11px] font-bold px-3 py-1 rounded-full border border-blue-200">
                   إعدادات التشغيل المدرسي
                 </span>
               </div>
 
               {/* 1. School Shift Selection Cards */}
               <div className="space-y-2">
-                <label className="block font-bold text-xs text-amber-300">
+                <label className="block font-bold text-xs text-slate-800">
                   1. نظام تشغيل الفترات الدراسية بالمدرسة *
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -539,14 +539,14 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                   <label
                     className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between space-y-2 ${
                       formData.schoolShiftType === 'single_morning'
-                        ? 'border-amber-400 bg-amber-500/15 shadow-md shadow-amber-500/10'
-                        : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        ? 'border-blue-600 bg-blue-50/70 shadow-xs ring-1 ring-blue-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Sun className="w-4 h-4 text-amber-400" />
-                        <span className="font-black text-xs text-white">فترة واحدة صباحية</span>
+                        <Sun className="w-4 h-4 text-amber-500" />
+                        <span className="font-black text-xs text-slate-900">فترة واحدة صباحية</span>
                       </div>
                       <input
                         type="radio"
@@ -554,10 +554,10 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         value="single_morning"
                         checked={formData.schoolShiftType === 'single_morning'}
                         onChange={handleConfigChange}
-                        className="text-amber-500 focus:ring-amber-500"
+                        className="text-blue-600 focus:ring-blue-500"
                       />
                     </div>
-                    <p className="text-[10.5px] text-slate-400 leading-relaxed">
+                    <p className="text-[10.5px] text-slate-500 leading-relaxed">
                       طابور الصباح والحصص تبدأ صباحاً لجميع الصفوف والتخصصات.
                     </p>
                   </label>
@@ -566,14 +566,14 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                   <label
                     className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between space-y-2 ${
                       formData.schoolShiftType === 'two_shifts'
-                        ? 'border-amber-400 bg-amber-500/15 shadow-md shadow-amber-500/10'
-                        : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        ? 'border-blue-600 bg-blue-50/70 shadow-xs ring-1 ring-blue-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Moon className="w-4 h-4 text-purple-400" />
-                        <span className="font-black text-xs text-white">فترتان (صباحية ومسائية)</span>
+                        <Moon className="w-4 h-4 text-purple-600" />
+                        <span className="font-black text-xs text-slate-900">فترتان (صباحية ومسائية)</span>
                       </div>
                       <input
                         type="radio"
@@ -581,10 +581,10 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         value="two_shifts"
                         checked={formData.schoolShiftType === 'two_shifts'}
                         onChange={handleConfigChange}
-                        className="text-amber-500 focus:ring-amber-500"
+                        className="text-blue-600 focus:ring-blue-500"
                       />
                     </div>
-                    <p className="text-[10.5px] text-slate-400 leading-relaxed">
+                    <p className="text-[10.5px] text-slate-500 leading-relaxed">
                       فترة صباحية لصفوف وفترة مسائية لصفوف أخرى أو فصول الخدمات.
                     </p>
                   </label>
@@ -593,14 +593,14 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                   <label
                     className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between space-y-2 ${
                       formData.schoolShiftType === 'single_full_day'
-                        ? 'border-amber-400 bg-amber-500/15 shadow-md shadow-amber-500/10'
-                        : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        ? 'border-blue-600 bg-blue-50/70 shadow-xs ring-1 ring-blue-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-cyan-400" />
-                        <span className="font-black text-xs text-white">فترة ممتدة (يوم كامل)</span>
+                        <Layers className="w-4 h-4 text-indigo-600" />
+                        <span className="font-black text-xs text-slate-900">فترة ممتدة (يوم كامل)</span>
                       </div>
                       <input
                         type="radio"
@@ -608,10 +608,10 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         value="single_full_day"
                         checked={formData.schoolShiftType === 'single_full_day'}
                         onChange={handleConfigChange}
-                        className="text-amber-500 focus:ring-amber-500"
+                        className="text-blue-600 focus:ring-blue-500"
                       />
                     </div>
-                    <p className="text-[10.5px] text-slate-400 leading-relaxed">
+                    <p className="text-[10.5px] text-slate-500 leading-relaxed">
                       يوم تدريبي وتطبيقي ممتد للمدارس التكنولوجية والمتقدمة ومراكز التدريب.
                     </p>
                   </label>
@@ -620,7 +620,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
 
               {/* 2. Weekly Work Schedule Options */}
               <div className="space-y-2">
-                <label className="block font-bold text-xs text-amber-300">
+                <label className="block font-bold text-xs text-slate-800">
                   2. نظام أيام العمل والدراسة الأسبوعية *
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -628,14 +628,14 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                   <label
                     className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between space-y-2 ${
                       formData.workDaysScheme === 'sun_to_thu'
-                        ? 'border-emerald-400 bg-emerald-500/15 shadow-md shadow-emerald-500/10'
-                        : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        ? 'border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-emerald-400" />
-                        <span className="font-black text-xs text-white">من الأحد إلى الخميس</span>
+                        <CalendarDays className="w-4 h-4 text-emerald-600" />
+                        <span className="font-black text-xs text-slate-900">من الأحد إلى الخميس</span>
                       </div>
                       <input
                         type="radio"
@@ -643,11 +643,11 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         value="sun_to_thu"
                         checked={formData.workDaysScheme === 'sun_to_thu'}
                         onChange={handleConfigChange}
-                        className="text-emerald-500 focus:ring-emerald-500"
+                        className="text-emerald-600 focus:ring-emerald-500"
                       />
                     </div>
-                    <div className="text-[10.5px] text-emerald-300 font-bold flex items-center gap-1">
-                      <span>5 أيام دراسة</span> • <span className="text-slate-400 font-normal">عطلة الجمعة والسبت</span>
+                    <div className="text-[10.5px] text-emerald-800 font-bold flex items-center gap-1">
+                      <span>5 أيام دراسة</span> • <span className="text-slate-500 font-normal">عطلة الجمعة والسبت</span>
                     </div>
                   </label>
 
@@ -655,14 +655,14 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                   <label
                     className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between space-y-2 ${
                       formData.workDaysScheme === 'sat_to_thu'
-                        ? 'border-emerald-400 bg-emerald-500/15 shadow-md shadow-emerald-500/10'
-                        : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        ? 'border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-emerald-400" />
-                        <span className="font-black text-xs text-white">من السبت إلى الخميس</span>
+                        <CalendarDays className="w-4 h-4 text-emerald-600" />
+                        <span className="font-black text-xs text-slate-900">من السبت إلى الخميس</span>
                       </div>
                       <input
                         type="radio"
@@ -670,11 +670,11 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         value="sat_to_thu"
                         checked={formData.workDaysScheme === 'sat_to_thu'}
                         onChange={handleConfigChange}
-                        className="text-emerald-500 focus:ring-emerald-500"
+                        className="text-emerald-600 focus:ring-emerald-500"
                       />
                     </div>
-                    <div className="text-[10.5px] text-emerald-300 font-bold flex items-center gap-1">
-                      <span>6 أيام دراسة</span> • <span className="text-slate-400 font-normal">عطلة الجمعة فقط (ورش مكثفة)</span>
+                    <div className="text-[10.5px] text-emerald-800 font-bold flex items-center gap-1">
+                      <span>6 أيام دراسة</span> • <span className="text-slate-500 font-normal">عطلة الجمعة فقط (ورش مكثفة)</span>
                     </div>
                   </label>
 
@@ -682,14 +682,14 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                   <label
                     className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between space-y-2 ${
                       formData.workDaysScheme === 'sat_to_wed'
-                        ? 'border-emerald-400 bg-emerald-500/15 shadow-md shadow-emerald-500/10'
-                        : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        ? 'border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-emerald-400" />
-                        <span className="font-black text-xs text-white">من السبت إلى الأربعاء</span>
+                        <CalendarDays className="w-4 h-4 text-emerald-600" />
+                        <span className="font-black text-xs text-slate-900">من السبت إلى الأربعاء</span>
                       </div>
                       <input
                         type="radio"
@@ -697,11 +697,11 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         value="sat_to_wed"
                         checked={formData.workDaysScheme === 'sat_to_wed'}
                         onChange={handleConfigChange}
-                        className="text-emerald-500 focus:ring-emerald-500"
+                        className="text-emerald-600 focus:ring-emerald-500"
                       />
                     </div>
-                    <div className="text-[10.5px] text-emerald-300 font-bold flex items-center gap-1">
-                      <span>5 أيام دراسة</span> • <span className="text-slate-400 font-normal">عطلة الخميس والجمعة</span>
+                    <div className="text-[10.5px] text-emerald-800 font-bold flex items-center gap-1">
+                      <span>5 أيام دراسة</span> • <span className="text-slate-500 font-normal">عطلة الخميس والجمعة</span>
                     </div>
                   </label>
                 </div>

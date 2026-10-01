@@ -335,31 +335,17 @@ export const Header: React.FC<HeaderProps> = ({
                 <>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-sm sm:text-base font-black text-white leading-normal truncate">
-                      مديرية التربية والتعليم • قيادة التعليم الفني بالمحافظة
+                      الإدارة المركزية لمدارس التعليم الفني والتدريب المهني — ديوان المديرية
                     </h1>
                     <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold shrink-0">
                       <Sparkles className="w-3 h-3 text-amber-400" /> كابينة الرقابة المركزية
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400 truncate">
-                    غرفة العمليات المركزية لإدارة ومتابعة شبكة المدارس الفنية وتطبيق الجدارات
+                    غرفة العمليات المركزية لإدارة ومتابعة شبكة المدارس الفنية وتطبيق الجدارات بالمحافظة
                   </p>
                 </>
               )
-            ) : currentUser.role === 'system_admin' ? (
-              <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-sm sm:text-base font-black text-white leading-normal truncate">
-                    إدارة المنظومة والتشغيل التقني
-                  </h1>
-                  <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-bold shrink-0">
-                    <Sliders className="w-3 h-3 text-cyan-400" /> مدير تقني
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400 truncate">
-                  إدارة حسابات المستخدمين، الخوادم، والنسخ الاحتياطي
-                </p>
-              </>
             ) : (
               <>
                 <div className="flex items-center gap-2 flex-wrap">
