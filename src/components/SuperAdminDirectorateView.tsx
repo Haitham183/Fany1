@@ -366,12 +366,12 @@ export const SuperAdminDirectorateView: React.FC<SuperAdminDirectorateViewProps>
   const compliantSchoolsCount = Math.max(1, Math.round(totalSchoolsCount * 0.85));
 
   const windowsMeta: { id: DirectorateSubWindow; label: string; icon: any; badge?: string }[] = [
-    { id: 'overview', label: 'كابينة المؤشرات المركزية', icon: LayoutDashboardIcon },
-    { id: 'schools_control', label: 'شبكة وإدارة المدارس', icon: Building2, badge: `${schools.length}` },
-    { id: 'competency_audit', label: 'رقابة الجدارات ونسب الورش 85%', icon: Award },
-    { id: 'attendance_observatory', label: 'مرصد الغياب ومواظبة 5', icon: TrendingUp },
-    { id: 'circulars_directives', label: 'القرارات والكتب الدورية', icon: FileText, badge: `${circulars.length}` },
-    { id: 'inspection_logs', label: 'سجل التفتيش والمتابعة', icon: ShieldAlert, badge: `${inspectionReports.length}` },
+    { id: 'overview', label: 'لوحة متابعة ورصد المدارس الفنية بالمحافظة', icon: LayoutDashboardIcon },
+    { id: 'schools_control', label: 'إنشاء بيانات المدارس الفنية وكلمات المرور', icon: Building2, badge: `${schools.length}` },
+    { id: 'attendance_observatory', label: 'مرصد الحضور والغياب الميداني', icon: TrendingUp },
+    { id: 'competency_audit', label: 'رقابة الجدارات ونسب حضور الورش (85%)', icon: Award },
+    { id: 'circulars_directives', label: 'الكتب الدورية والتعليمات الوزارية', icon: FileText, badge: `${circulars.length}` },
+    { id: 'inspection_logs', label: 'سجلات لجان التفتيش الفني', icon: ShieldAlert, badge: `${inspectionReports.length}` },
   ];
 
   return (

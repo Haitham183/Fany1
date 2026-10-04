@@ -86,7 +86,7 @@ const STORAGE_KEYS = {
 };
 
 // In-Memory Safe Reactive Cache for PII (Students & Social Cases) to prevent storing National IDs in LocalStorage
-let inMemoryStudentsCache: Student[] = [];
+let inMemoryStudentsCache: Student[] = [...MOCK_STUDENTS];
 let inMemorySocialCasesCache: SocialCaseRecord[] = [];
 let inMemoryGrievancesCache: GrievanceRecord[] = [];
 let inMemoryCalendarCache: AssessmentCalendarEvent[] = [];
@@ -153,12 +153,19 @@ export const initializeData = () => {
   if (typeof window === 'undefined') return;
 
   const isProduction = localStorage.getItem('egyptian_school_production_mode') === 'true';
+  if (isProduction) {
+    inMemoryStudentsCache = [];
+  }
 
   // Run Async Migration to Dexie IndexedDB
   runLocalStorageToIndexedDbMigration().then(async () => {
     try {
-      const dbStudents = await db.students.toArray();
-      inMemoryStudentsCache = dbStudents;
+      let dbStudents = await db.students.toArray();
+      if (dbStudents.length === 0 && !isProduction && MOCK_STUDENTS.length > 0) {
+        await db.students.bulkPut(MOCK_STUDENTS);
+        dbStudents = MOCK_STUDENTS;
+      }
+      inMemoryStudentsCache = isProduction ? [] : dbStudents;
 
       const dbCases = await db.social_cases.toArray();
       inMemorySocialCasesCache = dbCases;
@@ -195,6 +202,9 @@ export const initializeData = () => {
   }
   if (!localStorage.getItem(STORAGE_KEYS.NOTICES)) {
     localStorage.setItem(STORAGE_KEYS.NOTICES, JSON.stringify(isProduction ? [] : MOCK_NOTICES));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.COMPETENCY_ASSESSMENTS)) {
+    localStorage.setItem(STORAGE_KEYS.COMPETENCY_ASSESSMENTS, JSON.stringify(isProduction ? [] : MOCK_COMPETENCY_ASSESSMENTS));
   }
   // Self-heal legacy contaminated session in localStorage
   try {
@@ -2995,10 +3005,17 @@ export const importBackupData = (jsonString: string): { success: boolean; messag
  * Preserves essential administrative accounts, default industrial departments/classes layout, and CBE units catalog.
  */
 export const wipeDatabaseForProduction = async (): Promise<void> => {
+  // 1. Clear In-Memory Caches & Offline Queue immediately (works in Node/Vitest & Browser)
+  inMemoryStudentsCache = [];
+  inMemorySocialCasesCache = [];
+  inMemoryGrievancesCache = [];
+  inMemoryCalendarCache = [];
+  clearOfflineQueue();
+
   if (typeof window === 'undefined') return;
 
   try {
-    // 1. Clear IndexedDB Tables via Dexie
+    // 2. Clear IndexedDB Tables via Dexie
     await db.transaction(
       'rw',
       [
@@ -3045,13 +3062,6 @@ export const wipeDatabaseForProduction = async (): Promise<void> => {
   } catch (err) {
     console.error('Failed to clear IndexedDB tables:', err);
   }
-
-  // 2. Clear In-Memory Caches & Offline Queue
-  inMemoryStudentsCache = [];
-  inMemorySocialCasesCache = [];
-  inMemoryGrievancesCache = [];
-  inMemoryCalendarCache = [];
-  clearOfflineQueue();
 
   // 3. Reset LocalStorage to clean state
   localStorage.clear();

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SchoolConfig, User, PortalType, UserRole } from '@/types';
-import { login, getStudents } from '@/lib/storage';
+import { login, getStudents, getSchools } from '@/lib/storage';
 import { logAuditEvent } from '@/lib/auditLogger';
 import { EduTechIndustrialLogo } from '@/components/EduTechIndustrialLogo';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
@@ -23,7 +23,11 @@ import {
   Layers,
   HeartHandshake,
   Check,
-  ShieldAlert,
+  ChevronDown,
+  Sparkles,
+  FileText,
+  CheckCircle2,
+  Flame,
 } from 'lucide-react';
 
 interface PortalSelectionScreenProps {
@@ -33,20 +37,7 @@ interface PortalSelectionScreenProps {
   onLoginSuccess: (user: User, portal: PortalType) => void;
 }
 
-type MainTab = 'staff' | 'parent';
-
-interface StaffPortalInfo {
-  id: string;
-  portalType: PortalType;
-  roleKey: UserRole;
-  title: string;
-  subtitle: string;
-  badge: string;
-  icon: any;
-  defaultUsername: string;
-  defaultPassword?: string;
-  description: string;
-}
+export type PrimaryPortalTab = 'directorate' | 'principal' | 'parent';
 
 export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   schoolConfig,
@@ -54,17 +45,24 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   onSelectParentPortal,
   onLoginSuccess,
 }) => {
-  const [activeMainTab, setActiveMainTab] = useState<MainTab>('staff');
-  const [selectedStaffPortal, setSelectedStaffPortal] = useState<string>('directorate');
+  // Primary 3 Portals
+  const [activePortal, setActivePortal] = useState<PrimaryPortalTab>('directorate');
 
-  // Staff Credentials
-  const [username, setUsername] = useState<string>('directorate');
-  const [password, setPassword] = useState<string>('123');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Directorate Portal Form State
+  const [directorateUsername, setDirectorateUsername] = useState<string>('directorate');
+  const [directoratePassword, setDirectoratePassword] = useState<string>('123');
+  const [showDirPassword, setShowDirPassword] = useState<boolean>(false);
+  const [isDirLoading, setIsDirLoading] = useState<boolean>(false);
+  const [dirErrorMsg, setDirErrorMsg] = useState<string | null>(null);
 
-  // Parent 2FA Credentials
+  // Principal Portal Form State
+  const [principalUsername, setPrincipalUsername] = useState<string>('10201');
+  const [principalPassword, setPrincipalPassword] = useState<string>('10201');
+  const [showPrincPassword, setShowPrincPassword] = useState<boolean>(false);
+  const [isPrincLoading, setIsPrincLoading] = useState<boolean>(false);
+  const [princErrorMsg, setPrincErrorMsg] = useState<string | null>(null);
+
+  // Parent Portal 2FA Form State
   const [parentNationalId, setParentNationalId] = useState<string>('');
   const [parentSecretCode, setParentSecretCode] = useState<string>('');
   const [isParentLoading, setIsParentLoading] = useState<boolean>(false);
@@ -73,6 +71,16 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   const [parentLockoutTime, setParentLockoutTime] = useState<number | null>(null);
   const [parentRemainingLockSeconds, setParentRemainingLockSeconds] = useState<number>(0);
 
+  // Secondary Specialized Staff Accordion
+  const [showStaffCollapsible, setShowStaffCollapsible] = useState<boolean>(false);
+  const [staffRoleKey, setStaffRoleKey] = useState<string>('teacher');
+  const [staffUsername, setStaffUsername] = useState<string>('teacher');
+  const [staffPassword, setStaffPassword] = useState<string>('123');
+  const [showStaffPassword, setShowStaffPassword] = useState<boolean>(false);
+  const [isStaffLoading, setIsStaffLoading] = useState<boolean>(false);
+  const [staffErrorMsg, setStaffErrorMsg] = useState<string | null>(null);
+
+  // Lockout Timer Countdown
   useEffect(() => {
     if (!parentLockoutTime) return;
     const interval = setInterval(() => {
@@ -86,12 +94,59 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
     return () => clearInterval(interval);
   }, [parentLockoutTime]);
 
-  const handleParent2FALogin = (e: React.FormEvent) => {
+  // Handle Directorate Admin Login
+  const handleDirectorateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!directorateUsername.trim() || !directoratePassword.trim()) {
+      setDirErrorMsg('يرجى إدخال اسم المستخدم وكلمة المرور لمسئول المديرية');
+      return;
+    }
+
+    setIsDirLoading(true);
+    setDirErrorMsg(null);
+
+    setTimeout(() => {
+      const result = login(directorateUsername.trim(), directoratePassword);
+      setIsDirLoading(false);
+
+      if (result.success && result.user) {
+        onLoginSuccess(result.user, 'directorate');
+      } else {
+        setDirErrorMsg(result.error || 'بيانات الدخول غير صحيحة. يرجى التحقق من اسم المستخدم وكلمة المرور.');
+      }
+    }, 350);
+  };
+
+  // Handle Principal Login (School Code + PIN)
+  const handlePrincipalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!principalUsername.trim() || !principalPassword.trim()) {
+      setPrincErrorMsg('يرجى إدخال كود المدرسة الوزاري والرقم السري المعتمد');
+      return;
+    }
+
+    setIsPrincLoading(true);
+    setPrincErrorMsg(null);
+
+    setTimeout(() => {
+      const result = login(principalUsername.trim(), principalPassword);
+      setIsPrincLoading(false);
+
+      if (result.success && result.user) {
+        onLoginSuccess(result.user, 'principal');
+      } else {
+        setPrincErrorMsg(result.error || 'بيانات المدرسة غير صحيحة. تأكد من كود المدرسة المالي والإحصائي والرقم السري المعتمد من المديرية.');
+      }
+    }, 350);
+  };
+
+  // Handle Parent 2FA Login (National ID + School Secret Code)
+  const handleParentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setParentErrorMsg(null);
 
     if (parentLockoutTime && Date.now() < parentLockoutTime) {
-      setParentErrorMsg(`تم قفل محاولات الدخول مؤقتاً لحماية خصوصية الطالب. يرجى الانتظار ${parentRemainingLockSeconds} ثانية.`);
+      setParentErrorMsg(`تم قفل محاولات الدخول مؤقتاً لحماية خصوصية بيانات الطالب. يرجى الانتظار ${parentRemainingLockSeconds} ثانية.`);
       return;
     }
 
@@ -104,7 +159,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
     }
 
     if (!cleanCode) {
-      setParentErrorMsg('يرجى إدخال كود الدخول السري الصادر من إدارة المدرسة (2FA).');
+      setParentErrorMsg('يرجى إدخال الرقم السري الذي تمنحه المدرسة لولي الأمر.');
       return;
     }
 
@@ -149,141 +204,58 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
           setParentRemainingLockSeconds(300);
           setParentErrorMsg('تم تجاوز الحد الأقصى للمحاولات غير الصحيحة (5 محاولات). تم قفل الدخول مؤقتاً لمدة 5 دقائق لحماية الخصوصية.');
         } else {
-          setParentErrorMsg(`بيانات الدخول غير صحيحة. يرجى التأكد من الرقم القومي وكود الدخول السري. (المحاولات المتبقية: ${5 - nextFail})`);
+          setParentErrorMsg(`بيانات الدخول غير صحيحة. يرجى التأكد من الرقم القومي للطالب والرقم السري الصادر من المدرسة. (المحاولات المتبقية: ${5 - nextFail})`);
         }
       }
     }, 400);
   };
 
-  const staffPortals: StaffPortalInfo[] = [
-    {
-      id: 'directorate',
-      portalType: 'directorate',
-      roleKey: 'directorate_admin',
-      title: 'قيادة المديرية المركزية',
-      subtitle: 'الرقابة المركزية وشبكة المدارس الفنية بالمحافظة',
-      badge: 'القيادة المركزية',
-      icon: Building2,
-      defaultUsername: 'directorate',
-      defaultPassword: '123',
-      description: 'إدارة شبكة المدارس بالمحافظة، مؤشرات الأداء، الجدارات ونسب حضور الورش.',
-    },
-    {
-      id: 'principal',
-      portalType: 'principal',
-      roleKey: 'principal',
-      title: 'مدير عام المدرسة الفنية',
-      subtitle: 'حساب إدارة المنشأة بكود المدرسة والرقم السري المعتمد',
-      badge: 'كود المدرسة + PIN',
-      icon: School,
-      defaultUsername: '10201',
-      defaultPassword: '10201',
-      description: 'إدارة العمليات المدرسية الشاملة، الإحصاء الصباحي، والقرارات الإدارية.',
-    },
-    {
-      id: 'affairs',
-      portalType: 'affairs',
-      roleKey: 'affairs_deputy',
-      title: 'شئون الطلاب والسجلات',
-      subtitle: 'قانون التعليم 139، الإنذارات الرسمية، وقيد الطلاب',
-      badge: 'شئون الطلبة',
-      icon: Users,
-      defaultUsername: 'affairs',
-      defaultPassword: '123',
-      description: 'سجلات الغياب، مطابقة المادة 25، تحويلات الطلاب، ودفاتر 41 وسر 1.',
-    },
-    {
-      id: 'competencies',
-      portalType: 'competencies',
-      roleKey: 'external_verifier',
-      title: 'مسئول ومقيم الجدارات (CBE)',
-      subtitle: 'مصفوفة الجدارات، التحقق الداخلي والخارجي، ومحافظ الطلاب',
-      badge: 'تقييم الجدارات',
-      icon: Award,
-      defaultUsername: 'verifier',
-      defaultPassword: '123',
-      description: 'تقييم الوحدات العملية، توثيق أدلة الإتقان، وضمان حد الـ 85% لحضور الورش.',
-    },
-    {
-      id: 'teacher',
-      portalType: 'teacher',
-      roleKey: 'teacher',
-      title: 'معلم ومدرب الورش العملية',
-      subtitle: 'الرصد الميداني لغياب الحصص والورش ومخالفات السلامة',
-      badge: 'تدريب عملي',
-      icon: Layers,
-      defaultUsername: 'teacher',
-      defaultPassword: '123',
-      description: 'رصد الحضور اليومي بضغطة واحدة، تسجيل مهمات الوقاية، وتأمين الورش.',
-    },
-    {
-      id: 'social',
-      portalType: 'social_worker',
-      roleKey: 'social_worker',
-      title: 'الأخصائي الاجتماعي والتربوي',
-      subtitle: 'رعاية الطلاب، دراسة الحالات الاجتماعية، ومكافحة التسرب',
-      badge: 'رعاية الطلاب',
-      icon: HeartHandshake,
-      defaultUsername: 'social',
-      defaultPassword: '123',
-      description: 'متابعة الحالات المحالة من الذكاء الاصطناعي، جلسات الإرشاد وتعديل السلوك.',
-    },
-  ];
-
-  const currentStaffPortal =
-    staffPortals.find((p) => p.id === selectedStaffPortal) || staffPortals[0];
-
-  const mapRoleToPortal = (role: UserRole): PortalType => {
-    switch (role) {
-      case 'directorate_admin':
-        return 'directorate';
-      case 'principal':
-        return 'principal';
-      case 'affairs_deputy':
-      case 'affairs_officer':
-        return 'affairs';
-      case 'social_worker':
-        return 'social_worker';
-      case 'external_verifier':
-        return 'competencies';
-      case 'system_admin':
-        return 'admin';
-      case 'dept_head':
-        return 'dept_head';
-      case 'teacher':
-      default:
-        return 'teacher';
-    }
-  };
-
-  const handleStaffLogin = (e: React.FormEvent) => {
+  // Handle Specialized Staff Login
+  const handleStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      setErrorMsg('يرجى إدخال اسم المستخدم وكلمة المرور أو كود المدرسة والرقم السري');
+    if (!staffUsername.trim() || !staffPassword.trim()) {
+      setStaffErrorMsg('يرجى إدخال اسم المستخدم وكلمة المرور');
       return;
     }
 
-    setIsLoading(true);
-    setErrorMsg(null);
+    setIsStaffLoading(true);
+    setStaffErrorMsg(null);
 
     setTimeout(() => {
-      const result = login(username.trim(), password);
-      setIsLoading(false);
+      const result = login(staffUsername.trim(), staffPassword);
+      setIsStaffLoading(false);
 
       if (result.success && result.user) {
-        const detectedPortal = mapRoleToPortal(result.user.role);
+        let detectedPortal: PortalType = 'teacher';
+        if (result.user.role === 'dept_head') detectedPortal = 'dept_head';
+        else if (result.user.role === 'social_worker') detectedPortal = 'social_worker';
+        else if (result.user.role === 'affairs_deputy' || result.user.role === 'affairs_officer') detectedPortal = 'affairs';
+        else if (result.user.role === 'external_verifier' || result.user.isInternalVerifier) detectedPortal = 'competencies';
+
         onLoginSuccess(result.user, detectedPortal);
       } else {
-        setErrorMsg(result.error || 'بيانات الدخول غير صحيحة. يرجى التحقق من اسم المستخدم أو كود المدرسة وكلمة المرور.');
+        setStaffErrorMsg(result.error || 'بيانات الدخول غير صحيحة للكادر الفني.');
       }
     }, 350);
   };
 
-  const handleSelectRole = (portal: StaffPortalInfo) => {
-    setSelectedStaffPortal(portal.id);
-    setUsername(portal.defaultUsername);
-    setPassword(portal.defaultPassword || '123');
-    setErrorMsg(null);
+  // Quick Demo Pre-fill helpers
+  const fillDirectorateDemo = () => {
+    setDirectorateUsername('directorate');
+    setDirectoratePassword('123');
+    setDirErrorMsg(null);
+  };
+
+  const fillPrincipalDemo = (code: string, pin: string) => {
+    setPrincipalUsername(code);
+    setPrincipalPassword(pin);
+    setPrincErrorMsg(null);
+  };
+
+  const fillParentDemo = (nid: string, secretPin: string) => {
+    setParentNationalId(nid);
+    setParentSecretCode(secretPin);
+    setParentErrorMsg(null);
   };
 
   return (
@@ -296,15 +268,15 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
       </div>
 
       {/* Official Governmental Header Strip */}
-      <header className="relative z-10 bg-slate-950/90 backdrop-blur-md px-4 py-2.5 border-b border-slate-800 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+      <header className="relative z-10 bg-slate-950/95 backdrop-blur-md px-4 py-3 border-b border-slate-800 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2.5 mx-auto sm:mx-0">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="font-bold text-slate-100 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             جمهورية مصر العربية • وزارة التربية والتعليم والتعليم الفني
           </span>
           <span className="hidden md:inline text-slate-600">|</span>
-          <span className="hidden md:inline text-slate-400">قطاع التعليم الفني والتدريب المهني</span>
+          <span className="hidden md:inline text-slate-400">قطاع التعليم الفني والتدريب المهني بالمحافظات</span>
         </div>
 
         <div className="flex items-center gap-2 mx-auto sm:mx-0">
@@ -315,13 +287,13 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
       </header>
 
       {/* Main Center Container */}
-      <main className="relative z-10 flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-12 flex flex-col items-center justify-center">
+      <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 py-8 sm:py-12 flex flex-col items-center justify-center">
         {/* National Portal Brand & Title */}
-        <div className="text-center space-y-3 mb-8 max-w-2xl">
+        <div className="text-center space-y-3 mb-8 max-w-3xl">
           <div className="inline-block relative">
             <EduTechIndustrialLogo size="xl" animated={false} />
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 font-black text-[10px] px-3 py-0.5 rounded-full shadow-md border border-amber-300 whitespace-nowrap uppercase tracking-wider">
-              المنظومة الوزارية المعتمدة
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 font-black text-[10px] px-3.5 py-0.5 rounded-full shadow-md border border-amber-300 whitespace-nowrap uppercase tracking-wider">
+              المنظومة المركزية المعتمدة
             </div>
           </div>
 
@@ -330,261 +302,578 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
               بوابة التعليم الفني والتدريب المهني الموحدة
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium">
-              المنصة المركزية لإدارة المدارس الفنية، تقييم الجدارات المهنية، ومتابعة الانضباط المدرسي
+              المنصة الرسمية المعتمدة لمديرية التربية والتعليم بالمحافظة، مدراء المدارس الفنية، وبوابة استعلام أولياء الأمور
             </p>
           </div>
         </div>
 
-        {/* Central Enterprise Card */}
-        <div className="w-full max-w-xl bg-slate-900/95 backdrop-blur-2xl rounded-3xl border border-slate-700/80 shadow-2xl shadow-slate-950/80 overflow-hidden">
-          {/* Main Track Tabs */}
-          <div className="p-1.5 bg-slate-950/90 border-b border-slate-800 flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveMainTab('staff');
-                setErrorMsg(null);
-              }}
-              className={`flex-1 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeMainTab === 'staff'
-                  ? 'bg-amber-500 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-850'
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              <span>بوابات القيادة والكوادر المدرسية</span>
-            </button>
+        {/* 3 Primary Portals Navigation Selector */}
+        <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          {/* Portal 1: Directorate Admin */}
+          <button
+            type="button"
+            onClick={() => setActivePortal('directorate')}
+            className={`p-4 rounded-3xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
+              activePortal === 'directorate'
+                ? 'bg-amber-500/15 border-amber-400 text-white ring-2 ring-amber-400/50 shadow-xl'
+                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+            }`}
+          >
+            <div className="flex items-center justify-between w-full mb-3">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                  activePortal === 'directorate' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-800 text-amber-400'
+                }`}
+              >
+                <Building2 className="w-5 h-5" />
+              </div>
+              <span
+                className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                  activePortal === 'directorate'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}
+              >
+                القيادة المركزية
+              </span>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-black text-sm text-white flex items-center justify-between">
+                <span>مسئول مديرية التعليم</span>
+                {activePortal === 'directorate' && <Check className="w-4 h-4 text-amber-400" />}
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                إنشاء بيانات المدارس الفنية، توليد كلمات المرور، ومتابعة المدارس
+              </p>
+            </div>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveMainTab('parent');
-                setErrorMsg(null);
-              }}
-              className={`flex-1 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeMainTab === 'parent'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-850'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" />
-              <span>بوابة أولياء الأمور والطلاب (2FA)</span>
-            </button>
-          </div>
+          {/* Portal 2: School Principals */}
+          <button
+            type="button"
+            onClick={() => setActivePortal('principal')}
+            className={`p-4 rounded-3xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
+              activePortal === 'principal'
+                ? 'bg-emerald-500/15 border-emerald-400 text-white ring-2 ring-emerald-400/50 shadow-xl'
+                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+            }`}
+          >
+            <div className="flex items-center justify-between w-full mb-3">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                  activePortal === 'principal' ? 'bg-emerald-500 text-slate-950 font-black' : 'bg-slate-800 text-emerald-400'
+                }`}
+              >
+                <School className="w-5 h-5" />
+              </div>
+              <span
+                className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                  activePortal === 'principal'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}
+              >
+                كود المدرسة + PIN
+              </span>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-black text-sm text-white flex items-center justify-between">
+                <span>مدراء المدارس الفنية</span>
+                {activePortal === 'principal' && <Check className="w-4 h-4 text-emerald-400" />}
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                إدارة العمليات المدرسية، الطلاب، الجدارات، وإصدار أرقام أولياء الأمور
+              </p>
+            </div>
+          </button>
 
-          <div className="p-6 sm:p-8 space-y-6">
-            {activeMainTab === 'staff' ? (
-              /* Staff Track */
-              <div className="space-y-6">
-                {/* Role / Portal Selection Grid */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-                    <span className="flex items-center gap-1.5 text-slate-300">
-                      <span>اختر البوابة أو الدور لتسجيل الدخول المباشر:</span>
-                    </span>
-                    <span className="text-[10.5px] text-amber-400 font-normal">
-                      دخول موحد بالصلاحيات
-                    </span>
-                  </div>
+          {/* Portal 3: Parents & Students */}
+          <button
+            type="button"
+            onClick={() => setActivePortal('parent')}
+            className={`p-4 rounded-3xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
+              activePortal === 'parent'
+                ? 'bg-blue-600/20 border-blue-400 text-white ring-2 ring-blue-400/50 shadow-xl'
+                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+            }`}
+          >
+            <div className="flex items-center justify-between w-full mb-3">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                  activePortal === 'parent' ? 'bg-blue-600 text-white font-black' : 'bg-slate-800 text-blue-400'
+                }`}
+              >
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <span
+                className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                  activePortal === 'parent'
+                    ? 'bg-blue-600 text-white border-blue-400'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}
+              >
+                دخول ثنائي (2FA)
+              </span>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-black text-sm text-white flex items-center justify-between">
+                <span>بوابة ولي الأمر والنتائج</span>
+                {activePortal === 'parent' && <Check className="w-4 h-4 text-blue-400" />}
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                معرفة النتائج ونسب الحضور والغياب بالرقم القومي والرقم السري
+              </p>
+            </div>
+          </button>
+        </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {staffPortals.map((p) => {
-                      const Icon = p.icon;
-                      const isSelected = selectedStaffPortal === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => handleSelectRole(p)}
-                          className={`p-3 rounded-2xl border text-right transition-all flex items-center gap-3 cursor-pointer ${
-                            isSelected
-                              ? 'bg-amber-500/15 border-amber-400 text-amber-200 ring-1 ring-amber-400/50 shadow-xs'
-                              : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:border-slate-700'
-                          }`}
-                        >
-                          <div
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                              isSelected
-                                ? 'bg-amber-500 text-slate-950 font-bold'
-                                : 'bg-slate-800 text-slate-300'
-                            }`}
-                          >
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-xs text-white truncate block">
-                                {p.title}
-                              </span>
-                              {isSelected && (
-                                <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                              )}
-                            </div>
-                            <span className="text-[10px] text-slate-400 truncate block">
-                              {p.subtitle}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
+        {/* Central Enterprise Form Card */}
+        <div className="w-full max-w-3xl bg-slate-900/95 backdrop-blur-2xl rounded-3xl border border-slate-700/80 shadow-2xl shadow-slate-950/80 overflow-hidden">
+          {/* =========================================================================
+              PORTAL 1: DIRECTORATE OF EDUCATION
+             ========================================================================= */}
+          {activePortal === 'directorate' && (
+            <div className="p-6 sm:p-8 space-y-6 animate-in fade-in duration-200">
+              {/* Header Box */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md">
+                  <Building2 className="w-5 h-5 font-black" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm sm:text-base font-black text-amber-200">
+                    بوابة مسئول مديرية التربية والتعليم بالمحافظة
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    منصة الإشراف العليا لإنشاء بيانات المدارس الفنية، توليد وتعيين كلمات المرور وأكواد المدارس، والمتابعة اللحظية لنسب الحضور والجدارات بالمحافظة.
+                  </p>
+                </div>
+              </div>
+
+              {dirErrorMsg && (
+                <div className="bg-red-500/15 border border-red-500/40 text-red-200 rounded-2xl p-3.5 flex items-center gap-2.5 text-xs font-bold">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>{dirErrorMsg}</span>
+                </div>
+              )}
+
+              {/* Login Form */}
+              <form onSubmit={handleDirectorateSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">
+                    اسم المستخدم الرسمي أو كود مسئول المديرية
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      placeholder="أدخل اسم مستخدم المديرية (مثال: directorate)..."
+                      value={directorateUsername}
+                      onChange={(e) => setDirectorateUsername(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-amber-500/30 focus:outline-hidden transition"
+                    />
                   </div>
                 </div>
 
-                {/* Error Banner */}
-                {errorMsg && (
-                  <div className="bg-red-500/15 border border-red-500/40 text-red-200 rounded-2xl p-3 flex items-center gap-2 text-xs font-bold">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                    <span>{errorMsg}</span>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">
+                    كلمة المرور الرسمية المعتمدة
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showDirPassword ? 'text' : 'password'}
+                      required
+                      placeholder="أدخل كلمة المرور..."
+                      value={directoratePassword}
+                      onChange={(e) => setDirectoratePassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pr-3.5 pl-10 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-amber-500/30 focus:outline-hidden transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDirPassword(!showDirPassword)}
+                      className="absolute left-3 top-3 text-slate-400 hover:text-white transition cursor-pointer"
+                      title={showDirPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                    >
+                      {showDirPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-amber-400" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isDirLoading}
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-3 rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 mt-2"
+                >
+                  {isDirLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>جارٍ التحقق وفتح لوحة المديرية...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      <span>دخول بوابة مسئول مديرية التربية والتعليم بالمحافظة</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Quick Fill Demo Helper */}
+              <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>بيانات الدخول التجريبية للمديرية:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={fillDirectorateDemo}
+                  className="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-xl text-[11px] font-bold font-mono transition cursor-pointer"
+                >
+                  تعبئة تلقائية: directorate / 123
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+              PORTAL 2: TECHNICAL SCHOOL PRINCIPALS
+             ========================================================================= */}
+          {activePortal === 'principal' && (
+            <div className="p-6 sm:p-8 space-y-6 animate-in fade-in duration-200">
+              {/* Header Box */}
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md">
+                  <School className="w-5 h-5 font-black" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm sm:text-base font-black text-emerald-200">
+                    بوابة مدراء المدارس الفنية
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    تسجيل دخول مدير المنشأة المدرسية بكود المدرسة الوزاري والرقم السري المعتمد من المديرية لمتابعة الإحصاء الصباحي، تقييم الجدارات، ورصد الغياب، وإصدار وطباعة الأرقام السرية لأولياء الأمور.
+                  </p>
+                </div>
+              </div>
+
+              {princErrorMsg && (
+                <div className="bg-red-500/15 border border-red-500/40 text-red-200 rounded-2xl p-3.5 flex items-center gap-2.5 text-xs font-bold">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>{princErrorMsg}</span>
+                </div>
+              )}
+
+              {/* Login Form */}
+              <form onSubmit={handlePrincipalSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">
+                    كود المدرسة الوزاري (المالي والإحصائي) أو اسم المستخدم
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      placeholder="أدخل كود المدرسة (مثال: 10201)..."
+                      value={principalUsername}
+                      onChange={(e) => setPrincipalUsername(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-400 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-emerald-500/30 focus:outline-hidden transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">
+                    الرقم السري للمدرسة (PIN) المعتمد من المديرية
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPrincPassword ? 'text' : 'password'}
+                      required
+                      placeholder="أدخل الرقم السري للمدرسة..."
+                      value={principalPassword}
+                      onChange={(e) => setPrincipalPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-400 rounded-xl pr-3.5 pl-10 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-emerald-500/30 focus:outline-hidden transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPrincPassword(!showPrincPassword)}
+                      className="absolute left-3 top-3 text-slate-400 hover:text-white transition cursor-pointer"
+                      title={showPrincPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                    >
+                      {showPrincPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-emerald-400" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isPrincLoading}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-slate-950 font-black py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 mt-2"
+                >
+                  {isPrincLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>جارٍ التحقق والدخول لإدارة المدرسة...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      <span>تسجيل الدخول إلى لوحة مدير المدرسة الفنية</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Quick Fill School Demos */}
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <span className="text-slate-400 text-[11px] block">
+                  نماذج المدارس المسجلة بالمحافظة (اضغط للتعبئة الفورية):
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fillPrincipalDemo('10201', '10201')}
+                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>مدرسة العباسية الميكانيكية (كود: 10201)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fillPrincipalDemo('10405', '10405')}
+                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>مدرسة إمبابة الصناعية (كود: 10405)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fillPrincipalDemo('20108', '20108')}
+                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>مدرسة طوسون المتقدمة 5 سنوات (كود: 20108)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+              PORTAL 3: PARENTS & STUDENTS
+             ========================================================================= */}
+          {activePortal === 'parent' && (
+            <div className="p-6 sm:p-8 space-y-6 animate-in fade-in duration-200">
+              {/* Header Box */}
+              <div className="bg-blue-600/15 border border-blue-500/30 rounded-2xl p-4 flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                  <GraduationCap className="w-5 h-5 font-black" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm sm:text-base font-black text-blue-200">
+                    بوابة ولي الأمر لمعرفة النتائج ونسب الحضور والغياب
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    استعلام فوري ومؤمن لولي الأمر للاطلاع على: سجل الغياب اليومي، نسب حضور الورش العملية (85%) وموقف الحرمان، ونتائج تقييم الجدارات، والإنذارات الرسمية.
+                  </p>
+                </div>
+              </div>
+
+              {parentErrorMsg && (
+                <div className="bg-red-500/15 border border-red-500/40 text-red-200 rounded-2xl p-3.5 flex items-center gap-2.5 text-xs font-bold">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>{parentErrorMsg}</span>
+                </div>
+              )}
+
+              {/* Login Form */}
+              <form onSubmit={handleParentSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">
+                    الرقم القومي للطالب (14 رقماً)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      maxLength={14}
+                      disabled={Boolean(parentLockoutTime)}
+                      placeholder="أدخل الرقم القومي للطالب (14 رقماً)..."
+                      value={parentNationalId}
+                      onChange={(e) => setParentNationalId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-blue-400 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-blue-500/30 focus:outline-hidden transition disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">
+                    الرقم السري الذي تمنحه له المدرسة (كود الدخول السري 2FA)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      disabled={Boolean(parentLockoutTime)}
+                      placeholder="أدخل الرقم السري الصادر من إدارة المدرسة للطالب..."
+                      value={parentSecretCode}
+                      onChange={(e) => setParentSecretCode(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-blue-400 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-blue-500/30 focus:outline-hidden transition disabled:opacity-50 uppercase"
+                    />
+                  </div>
+                  <span className="text-[10.5px] text-slate-400 block pt-0.5">
+                    * يُمنح الرقم السري لولي الأمر من خلال إدارة شئون الطلاب بالمدرسة في إخطار رسمي لضمان سرية البيانات.
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isParentLoading || Boolean(parentLockoutTime)}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black py-3 rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 mt-2"
+                >
+                  {isParentLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>جارٍ التحقق واستخراج نتائج وسجل غياب الطالب...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <GraduationCap className="w-4 h-4" />
+                      <span>استعلام وعرض النتائج ونسب الحضور والغياب للطالب</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Quick Fill Student Demos */}
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <span className="text-slate-400 text-[11px] block">
+                  نماذج تجريبية للاستعلام الفوري (اضغط للتعبئة والاستعلام):
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fillParentDemo('30801011234567', 'SEC789')}
+                    className="bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>طالب 1: إبراهيم النجار (جدير - حضور 93%)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fillParentDemo('30802021234568', 'SEC456')}
+                    className="bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Flame className="w-3.5 h-3.5 text-amber-400" />
+                    <span>طالب 2: يوسف الشريف (إنذار غياب - حضور 70%)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fillParentDemo('30803031234569', 'SEC123')}
+                    className="bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+                    <span>طالب 3: كريم البدري (برنامج علاجي - حضور 87%)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Secondary Collapsible: Specialized Staff Roles */}
+        <div className="w-full max-w-3xl mt-6">
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => setShowStaffCollapsible(!showStaffCollapsible)}
+              className="w-full p-3.5 flex items-center justify-between text-xs font-bold text-slate-400 hover:text-slate-200 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-slate-400" />
+                <span>دخول الكوادر التخصصية بالمدرسة (معلمي الورش، رؤساء الأقسام، شئون الطلبة، الأخصائي الاجتماعي)</span>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${showStaffCollapsible ? 'rotate-180 text-amber-400' : ''}`}
+              />
+            </button>
+
+            {showStaffCollapsible && (
+              <div className="p-4 pt-2 border-t border-slate-800/60 space-y-4">
+                {/* Role Selector */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'teacher', title: 'معلم الورشة', user: 'teacher', pass: '123' },
+                    { id: 'dept_head', title: 'رئيس القسم', user: 'depthead', pass: '123' },
+                    { id: 'affairs', title: 'شئون الطلبة', user: 'affairs', pass: '123' },
+                    { id: 'social', title: 'الأخصائي الاجتماعي', user: 'social', pass: '123' },
+                  ].map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => {
+                        setStaffRoleKey(r.id);
+                        setStaffUsername(r.user);
+                        setStaffPassword(r.pass);
+                        setStaffErrorMsg(null);
+                      }}
+                      className={`p-2 rounded-xl border text-center text-xs font-bold transition cursor-pointer ${
+                        staffRoleKey === r.id
+                          ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {r.title}
+                    </button>
+                  ))}
+                </div>
+
+                {staffErrorMsg && (
+                  <div className="bg-red-500/15 border border-red-500/40 text-red-200 rounded-xl p-2.5 text-xs font-bold flex items-center gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                    <span>{staffErrorMsg}</span>
                   </div>
                 )}
 
-                {/* Login Form */}
-                <form onSubmit={handleStaffLogin} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-300">
-                      اسم المستخدم الرسمي أو كود المدرسة الوزاري
-                    </label>
+                <form onSubmit={handleStaffSubmit} className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      required
+                      placeholder="اسم المستخدم..."
+                      value={staffUsername}
+                      onChange={(e) => setStaffUsername(e.target.value)}
+                      className="bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    />
                     <div className="relative">
                       <input
-                        type="text"
+                        type={showStaffPassword ? 'text' : 'password'}
                         required
-                        placeholder="أدخل اسم المستخدم أو كود المدرسة (مثال: 10201)..."
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-amber-500/30 focus:outline-hidden transition"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-300">
-                      كلمة المرور أو الرقم السري للمدرسة (PIN)
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        placeholder="أدخل كلمة المرور أو الرقم السري المعتمد..."
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pr-3.5 pl-10 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-amber-500/30 focus:outline-hidden transition"
+                        placeholder="كلمة المرور..."
+                        value={staffPassword}
+                        onChange={(e) => setStaffPassword(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl pr-3 pl-8 py-2 text-xs text-white font-mono"
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3 top-3 text-slate-400 hover:text-white transition cursor-pointer"
-                        title={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                        onClick={() => setShowStaffPassword(!showStaffPassword)}
+                        className="absolute left-2.5 top-2.5 text-slate-400 hover:text-white"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-amber-400" />}
+                        {showStaffPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
 
                   <button
                     type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-3 rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 mt-2"
+                    disabled={isStaffLoading}
+                    className="w-full bg-slate-800 hover:bg-slate-750 text-white font-bold py-2 rounded-xl text-xs transition cursor-pointer"
                   >
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                        <span>جارٍ التحقق والدخول...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <LogIn className="w-4 h-4" />
-                        <span>تسجيل الدخول إلى البوابة المعتمدة</span>
-                      </>
-                    )}
+                    {isStaffLoading ? 'جارٍ التحقق...' : 'دخول بحساب الكادر المدرسي'}
                   </button>
                 </form>
-
-                {/* Secure Notice */}
-                <div className="pt-2 border-t border-slate-800 text-center">
-                  <span className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>اتصال مشفر ومؤمن وفق معايير الإدارة المركزية للتعليم الفني</span>
-                  </span>
-                </div>
-              </div>
-            ) : (
-              /* Parent 2FA Track */
-              <div className="space-y-6">
-                <div className="bg-blue-950/40 border border-blue-500/30 rounded-2xl p-4 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-md">
-                    <ShieldCheck className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="text-sm sm:text-base font-black text-white">
-                    التحقق الثنائي لولي الأمر والطالب (2FA)
-                  </h3>
-                  <p className="text-xs text-blue-200/90 leading-relaxed max-w-md mx-auto">
-                    للاطلاع على سجل الغياب اليومي، نسب حضور الورش، ونتائج تقييم الجدارات، يرجى إدخال الرقم القومي وكود الطالب.
-                  </p>
-                </div>
-
-                {parentErrorMsg && (
-                  <div className="bg-red-500/15 border border-red-500/40 text-red-200 rounded-2xl p-3 flex items-center gap-2 text-xs font-bold">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                    <span>{parentErrorMsg}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleParent2FALogin} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-300">
-                      الرقم القومي للطالب (14 رقماً)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      maxLength={14}
-                      disabled={Boolean(parentLockoutTime)}
-                      placeholder="أدخل الرقم القومي للطالب..."
-                      value={parentNationalId}
-                      onChange={(e) => setParentNationalId(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 focus:border-blue-400 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-blue-500/30 focus:outline-hidden transition disabled:opacity-50"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-300">
-                      كود الطالب الوزاري الصادر من المدرسة
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      disabled={Boolean(parentLockoutTime)}
-                      placeholder="أدخل كود الطالب (مثال: ST2026)..."
-                      value={parentSecretCode}
-                      onChange={(e) => setParentSecretCode(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 focus:border-blue-400 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:ring-2 focus:ring-blue-500/30 focus:outline-hidden transition disabled:opacity-50"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isParentLoading || Boolean(parentLockoutTime)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 mt-2"
-                  >
-                    {isParentLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>جارٍ الاستعلام والتحقق...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <GraduationCap className="w-4 h-4" />
-                        <span>عرض ملف وحضور الطالب</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                <div className="pt-2 border-t border-slate-800 text-center">
-                  <span className="text-[11px] text-slate-400">
-                    يمكن الحصول على كود الطالب من خلال بطاقة الطالب أو إدارة شئون الطلاب بالمدرسة
-                  </span>
-                </div>
               </div>
             )}
           </div>

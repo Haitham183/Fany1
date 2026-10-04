@@ -51,8 +51,13 @@ function GatewayContent() {
     setCurrentUser(user);
     setIsAuthenticated(true);
 
-    if (portal === 'directorate' || user.role === 'directorate_admin') {
+    if (portal === 'parent' || user.role === 'parent') {
+      const studentId = user.id.replace('parent_', '');
+      router.push(`/parent?studentId=${studentId}`);
+    } else if (portal === 'directorate' || user.role === 'directorate_admin') {
       router.push('/directorate');
+    } else if (portal === 'principal' || user.role === 'principal') {
+      router.push('/dashboard');
     } else if (portal === 'teacher' || user.role === 'teacher') {
       router.push('/attendance');
     } else if (portal === 'dept_head' || user.role === 'dept_head') {

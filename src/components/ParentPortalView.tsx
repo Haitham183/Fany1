@@ -305,50 +305,101 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             </div>
           </div>
 
-          {/* Secure 2-Factor Search Form */}
+          {/* Secure 2-Factor Search Form or Verified Student Status */}
           <div className="mt-6 pt-6 border-t border-slate-800/80">
-            <form onSubmit={handleSecureLogin} className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="relative">
-                  <Search className="w-5 h-5 absolute right-3.5 top-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="الرقم القومي للطالب (14 رقماً)..."
-                    value={nationalIdInput}
-                    onChange={(e) => setNationalIdInput(e.target.value)}
-                    disabled={Boolean(lockoutTime)}
-                    className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden disabled:opacity-50 font-mono"
-                  />
+            {selectedStudent ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950/80 p-4 rounded-2xl border border-emerald-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-emerald-300 font-bold block">تم التحقق المعتمد بالرقم القومي والرقم السري</span>
+                    <h3 className="text-sm font-black text-white">{selectedStudent.fullName} (كود: {selectedStudent.studentCode})</h3>
+                  </div>
                 </div>
-
-                <div className="relative">
-                  <KeyRound className="w-5 h-5 absolute right-3.5 top-3.5 text-slate-400" />
-                  <input
-                    type="password"
-                    placeholder="كود الدخول السري الصادر من المدرسة..."
-                    value={secretCodeInput}
-                    onChange={(e) => setSecretCodeInput(e.target.value)}
-                    disabled={Boolean(lockoutTime)}
-                    className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden disabled:opacity-50 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <span className="text-[11px] text-slate-400">
-                  * يُصرف كود الدخول السري من إدارة شئون الطلاب لولي الأمر لضمان سرية البيانات.
-                </span>
 
                 <button
-                  type="submit"
-                  disabled={Boolean(lockoutTime)}
-                  className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 text-slate-950 font-black px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 text-sm cursor-pointer shadow-lg shadow-amber-500/10 shrink-0"
+                  type="button"
+                  onClick={() => {
+                    setSelectedStudent(null);
+                    setNationalIdInput('');
+                    setSecretCodeInput('');
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
-                  <Lock className="w-4 h-4" />
-                  <span>دخول واستعلام آمن</span>
+                  الاستعلام عن طالب آخر ➔
                 </button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleSecureLogin} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="relative">
+                    <Search className="w-5 h-5 absolute right-3.5 top-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="الرقم القومي للطالب (14 رقماً)..."
+                      value={nationalIdInput}
+                      onChange={(e) => setNationalIdInput(e.target.value)}
+                      disabled={Boolean(lockoutTime)}
+                      className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden disabled:opacity-50 font-mono"
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <KeyRound className="w-5 h-5 absolute right-3.5 top-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="الرقم السري الذي تمنحه له المدرسة..."
+                      value={secretCodeInput}
+                      onChange={(e) => setSecretCodeInput(e.target.value)}
+                      disabled={Boolean(lockoutTime)}
+                      className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden disabled:opacity-50 font-mono uppercase"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                  <span className="text-[11px] text-slate-400">
+                    * يُصرف الرقم السري من إدارة شئون الطلاب بالمدرسة لولي الأمر لضمان سرية النتائج والغياب.
+                  </span>
+
+                  <button
+                    type="submit"
+                    disabled={Boolean(lockoutTime)}
+                    className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 text-slate-950 font-black px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 text-sm cursor-pointer shadow-lg shadow-amber-500/10 shrink-0"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>استعلام وعرض النتائج ونسب الغياب</span>
+                  </button>
+                </div>
+
+                {/* Quick Fill Student Demos */}
+                <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-[11px] text-slate-400">نماذج تجريبية سريعة:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNationalIdInput('30801011234567');
+                      setSecretCodeInput('SEC789');
+                    }}
+                    className="bg-slate-800 hover:bg-slate-750 text-amber-300 px-2.5 py-1 rounded-lg text-[10.5px] font-mono border border-slate-700 cursor-pointer"
+                  >
+                    طالب 1: إبراهيم النجار (SEC789)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNationalIdInput('30802021234568');
+                      setSecretCodeInput('SEC456');
+                    }}
+                    className="bg-slate-800 hover:bg-slate-750 text-amber-300 px-2.5 py-1 rounded-lg text-[10.5px] font-mono border border-slate-700 cursor-pointer"
+                  >
+                    طالب 2: يوسف الشريف (SEC456)
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
 

@@ -18,6 +18,7 @@ import {
   transferStudent,
   getTransferLogs,
   getSchoolConfig,
+  getSchools,
   autoFixSwappedStudentFields,
   checkStudentDuplicate,
 } from '@/lib/storage';
@@ -56,6 +57,9 @@ import {
   Sparkles,
   LayoutGrid,
   List,
+  Printer,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { ExcelImportModal } from '@/components/ExcelImportModal';
 
@@ -105,6 +109,13 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
   const [studentFormStatus, setStudentFormStatus] = useState<any>('منتظم');
   const [studentFormError, setStudentFormError] = useState<string | null>(null);
   const [copiedCodeStudentId, setCopiedCodeStudentId] = useState<string | null>(null);
+  const [parentSlipStudent, setParentSlipStudent] = useState<Student | null>(null);
+  const [isParentSlipModalOpen, setIsParentSlipModalOpen] = useState<boolean>(false);
+
+  const handleOpenParentSlip = (student: Student) => {
+    setParentSlipStudent(student);
+    setIsParentSlipModalOpen(true);
+  };
 
   // Transfer Student Modal State
   const [isTransferModalOpen, setIsTransferModalOpen] = useState<boolean>(false);
@@ -750,15 +761,26 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
                                 {student.parentAccessCode || 'DEMO12'}
                               </span>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleCopySecretCode(student.id, student.parentAccessCode || 'DEMO12')}
-                              className="text-[9.5px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-0.5 px-1 rounded hover:bg-indigo-100 transition cursor-pointer"
-                              title="نسخ كود الدخول السري لولي الأمر"
-                            >
-                              <Copy className="w-2.5 h-2.5" />
-                              <span>{copiedCodeStudentId === student.id ? 'تم النسخ!' : 'نسخ'}</span>
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleCopySecretCode(student.id, student.parentAccessCode || 'DEMO12')}
+                                className="text-[9.5px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-0.5 px-1 py-0.5 rounded hover:bg-indigo-100 transition cursor-pointer"
+                                title="نسخ كود الدخول السري لولي الأمر"
+                              >
+                                <Copy className="w-2.5 h-2.5" />
+                                <span>{copiedCodeStudentId === student.id ? 'تم!' : 'نسخ'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenParentSlip(student)}
+                                className="text-[9.5px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white border border-indigo-200 hover:bg-indigo-100 transition cursor-pointer shadow-2xs"
+                                title="طباعة بطاقة إخطار ولي الأمر بالرقم السري"
+                              >
+                                <Printer className="w-2.5 h-2.5" />
+                                <span>طباعة كارت</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -896,6 +918,14 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
                                 title="نسخ كود الدخول السري"
                               >
                                 <Copy className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenParentSlip(student)}
+                                className="text-indigo-600 hover:text-indigo-950 transition cursor-pointer p-0.5"
+                                title="طباعة بطاقة إخطار ولي الأمر بالرقم السري"
+                              >
+                                <Printer className="w-3 h-3" />
                               </button>
                             </div>
                           </td>
@@ -1474,6 +1504,136 @@ export const StudentAffairsView: React.FC<StudentAffairsViewProps> = ({
           onDataChanged();
         }}
       />
+
+      {/* Official Parent Access Slip Modal */}
+      {isParentSlipModalOpen && parentSlipStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200 text-slate-900 font-['Cairo']">
+            {/* Modal Header */}
+            <div className="bg-slate-950 text-white p-4 flex items-center justify-between no-print">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <Printer className="w-4 h-4 text-amber-400" />
+                <span>إخطار رسمي لولي الأمر ببيانات الدخول على المنظومة (2FA)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>طباعة الإشعار (A4)</span>
+                </button>
+                <button
+                  onClick={() => setIsParentSlipModalOpen(false)}
+                  className="text-slate-400 hover:text-white p-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Content */}
+            <div className="p-6 sm:p-8 space-y-5 bg-white">
+              {/* Ministerial Slip Header */}
+              <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between">
+                <div className="text-right space-y-0.5 text-xs text-slate-800">
+                  <div className="font-bold">جمهورية مصر العربية</div>
+                  <div>وزارة التربية والتعليم والتعليم الفني</div>
+                  <div>قطاع التعليم الفني والتدريب المهني</div>
+                  <div className="font-black text-amber-800">{schoolConfig.directorate}</div>
+                  <div>{schoolConfig.administration}</div>
+                </div>
+
+                <div className="text-center space-y-1">
+                  <div className="w-12 h-12 rounded-full border-2 border-slate-900 flex items-center justify-center mx-auto text-xs font-black bg-slate-50">
+                    <ShieldCheck className="w-6 h-6 text-slate-800" />
+                  </div>
+                  <div className="text-[10px] font-mono text-slate-500">كود المدرسة: {getSchools().find(s => s.id === schoolConfig.schoolId)?.code || '10201'}</div>
+                </div>
+
+                <div className="text-left space-y-0.5 text-xs text-slate-800">
+                  <div className="font-black">{schoolConfig.name}</div>
+                  <div>إدارة شئون الطلاب والامتحانات</div>
+                  <div>العام الدراسي: {schoolConfig.academicYear || '2025 / 2026'}</div>
+                  <div className="font-mono text-[11px]">التاريخ: {new Date().toISOString().split('T')[0]}</div>
+                </div>
+              </div>
+
+              {/* Document Title Banner */}
+              <div className="text-center py-1">
+                <span className="inline-block bg-slate-900 text-white text-xs px-4 py-1.5 rounded-full font-black tracking-wide">
+                  إخطار رسمي لولي الأمر ببيانات الدخول على بوابة المدارس الفنية
+                </span>
+              </div>
+
+              {/* Salutation & Description */}
+              <div className="text-xs text-slate-700 leading-relaxed space-y-1.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <p className="font-bold text-slate-900">
+                  السيد ولي أمر الطالب / <span className="text-sm font-black text-blue-900">{parentSlipStudent.fullName}</span> المحترم،
+                </p>
+                <p>
+                  نحيط سيادتكم علماً بأنه قد تم تفعيل حساب نجلكم على المنظومة الإلكترونية الموحدة لقطاع التعليم الفني، وذلك لمتابعة:
+                </p>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-600 font-semibold pr-2">
+                  <li>نسب الحضور والغياب اليومية وساعات الورش العملية المقررة (الحد الأدنى 85%).</li>
+                  <li>موقف نتائج تقييم وحدات الجدارات المهنية المقررة (جدير / غير جدير).</li>
+                  <li>الإنذارات القانونية والخطابات الرسمية الصادرة تطبيقاً لقانون التعليم رقم 139.</li>
+                </ul>
+              </div>
+
+              {/* Big High-Contrast Credentials Box */}
+              <div className="bg-slate-900 text-white p-4 rounded-2xl border-2 border-amber-500 shadow-md space-y-3">
+                <div className="text-center text-xs font-bold text-amber-400 border-b border-slate-800 pb-1.5">
+                  بيانات الدخول الآمنة عبر بوابة ولي الأمر (2FA)
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[11px] text-slate-400 block">الرقم القومي للطالب (14 رقماً):</span>
+                    <span className="font-mono text-base font-black text-amber-300">
+                      {parentSlipStudent.nationalId}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-500/50">
+                    <span className="text-[11px] text-slate-400 block">الرقم السري الممنوح من المدرسة (PIN):</span>
+                    <span className="font-mono text-xl font-black text-emerald-400 tracking-wider">
+                      {parentSlipStudent.parentAccessCode || 'DEMO12'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-300 text-center space-y-0.5 pt-1">
+                  <div>الصف: <strong>{classes.find((c) => c.id === parentSlipStudent.classId)?.gradeName || 'الصف الأول'}</strong> • الفصل: <strong>{classes.find((c) => c.id === parentSlipStudent.classId)?.name || 'غير محدد'}</strong></div>
+                  <div>التخصص: <strong>{departments.find((d) => d.id === parentSlipStudent.departmentId)?.name || 'عام'}</strong></div>
+                </div>
+              </div>
+
+              {/* Security Warning */}
+              <div className="text-[10.5px] text-slate-600 bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
+                <strong>تنبيه هام لولي الأمر:</strong> هذا الرقم السري خاص بكم فقط، يرجى عدم إفشائه للغير لضمان سرية موقف الطالب الدراسي وسجلات الغياب والدرجات.
+              </div>
+
+              {/* Signatures */}
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-300 text-center text-xs">
+                <div>
+                  <span className="text-slate-500 text-[10.5px] block">مسئول شئون الطلاب:</span>
+                  <span className="font-bold text-slate-800 mt-1 block">.........................</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10.5px] block">وكيل شئون الطلاب:</span>
+                  <span className="font-bold text-slate-800 mt-1 block">{schoolConfig.studentAffairsHead || 'أ. سامح عبد الفتاح'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10.5px] block">يعتمد مدير عام المدرسة:</span>
+                  <span className="font-black text-slate-900 mt-1 block">{schoolConfig.managerName || 'مدير المدرسة'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
