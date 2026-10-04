@@ -11,17 +11,17 @@ function ParentPageContent() {
   const searchParams = useSearchParams();
   const paramStudentId = searchParams?.get('studentId') || undefined;
 
-  let authStudentId: string | undefined = undefined;
-  if (typeof window !== 'undefined') {
+  const [authStudentId, setAuthStudentId] = React.useState<string | undefined>(undefined);
+  React.useEffect(() => {
     try {
       const u = getCurrentUser();
       if (u && u.role === 'parent' && u.id.startsWith('parent_')) {
-        authStudentId = u.id.replace('parent_', '');
+        setAuthStudentId(u.id.replace('parent_', ''));
       }
     } catch {
       // non-blocking
     }
-  }
+  }, []);
 
   const effectiveStudentId = paramStudentId || authStudentId;
 

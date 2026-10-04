@@ -25,19 +25,10 @@ export default function RootHomePage() {
 
 function GatewayContent() {
   const router = useRouter();
-  const [isClient, setIsClient] = useState<boolean>(() => typeof window !== 'undefined');
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return getIsAuthenticated();
-  });
-  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return getSchoolConfig();
-  });
-  const [users, setUsers] = useState<User[]>(() => {
-    if (typeof window === 'undefined') return [];
-    return getUsers();
-  });
+  const [isClient, setIsClient] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     setIsClient(true);

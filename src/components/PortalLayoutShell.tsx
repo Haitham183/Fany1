@@ -107,21 +107,24 @@ function PortalShellContent({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [isClient, setIsClient] = useState<boolean>(() => typeof window !== 'undefined');
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return getIsAuthenticated();
-  });
+  const [isClient, setIsClient] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [activePortal, setActivePortal] = useState<PortalType | null>(null);
-  const [currentUser, setCurrentUserState] = useState<User>(() => getCurrentUser());
-  const [users, setUsers] = useState<User[]>(() => (typeof window !== 'undefined' ? getUsers() : []));
-  const [students, setStudents] = useState<Student[]>(() => (typeof window !== 'undefined' ? getStudents() : []));
-  const [departments, setDepartments] = useState<Department[]>(() => (typeof window !== 'undefined' ? getDepartments() : []));
-  const [classes, setClasses] = useState<SchoolClass[]>(() => (typeof window !== 'undefined' ? getClasses() : []));
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => (typeof window !== 'undefined' ? getAttendance() : []));
-  const [notices, setNotices] = useState<OfficialNotice[]>(() => (typeof window !== 'undefined' ? getNotices() : []));
-  const [socialCases, setSocialCases] = useState<SocialCaseRecord[]>(() => (typeof window !== 'undefined' ? getSocialCases() : []));
-  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(() => (typeof window !== 'undefined' ? getSchoolConfig() : null));
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUserState] = useState<User>({
+    id: 'user_directorate',
+    name: 'مسئول مديرية التربية والتعليم',
+    username: 'directorate',
+    role: 'directorate_admin',
+    roleTitle: 'مسئول مديرية التربية والتعليم',
+  });
+  const [students, setStudents] = useState<Student[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [notices, setNotices] = useState<OfficialNotice[]>([]);
+  const [socialCases, setSocialCases] = useState<SocialCaseRecord[]>([]);
+  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
   const [inspectingSchool, setInspectingSchool] = useState<SchoolTenant | null>(null);
 
   // Compute activeTab from pathname or props
