@@ -37,6 +37,7 @@ export function AuditLogsView({ currentUserRole, currentSchoolId }: AuditLogsVie
       const params = new URLSearchParams();
       if (selectedAction !== 'all') params.append('action', selectedAction);
       if (selectedResource !== 'all') params.append('resource', selectedResource);
+      if (currentSchoolId) params.append('schoolId', currentSchoolId);
       if (params.toString()) url += `?${params.toString()}`;
 
       const res = await fetch(url);
@@ -55,7 +56,7 @@ export function AuditLogsView({ currentUserRole, currentSchoolId }: AuditLogsVie
 
   useEffect(() => {
     fetchLogs();
-  }, [selectedAction, selectedResource]);
+  }, [selectedAction, selectedResource, currentSchoolId]);
 
   const filteredLogs = logs.filter((l) => {
     if (!searchQuery.trim()) return true;

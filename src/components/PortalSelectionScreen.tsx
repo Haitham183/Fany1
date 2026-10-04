@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { SchoolConfig, User, PortalType, UserRole } from '@/types';
 import { login, getStudents, getSchools } from '@/lib/storage';
 import { logAuditEvent } from '@/lib/auditLogger';
+import { verifyParentCredentials, getParentLockoutStatus } from '@/lib/parentAuth';
 import { EduTechIndustrialLogo } from '@/components/EduTechIndustrialLogo';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
 import {
@@ -50,14 +51,14 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
 
   // Directorate Portal Form State
   const [directorateUsername, setDirectorateUsername] = useState<string>('directorate');
-  const [directoratePassword, setDirectoratePassword] = useState<string>('123');
+  const [directoratePassword, setDirectoratePassword] = useState<string>('');
   const [showDirPassword, setShowDirPassword] = useState<boolean>(false);
   const [isDirLoading, setIsDirLoading] = useState<boolean>(false);
   const [dirErrorMsg, setDirErrorMsg] = useState<string | null>(null);
 
   // Principal Portal Form State
   const [principalUsername, setPrincipalUsername] = useState<string>('10201');
-  const [principalPassword, setPrincipalPassword] = useState<string>('10201');
+  const [principalPassword, setPrincipalPassword] = useState<string>('');
   const [showPrincPassword, setShowPrincPassword] = useState<boolean>(false);
   const [isPrincLoading, setIsPrincLoading] = useState<boolean>(false);
   const [princErrorMsg, setPrincErrorMsg] = useState<string | null>(null);
@@ -67,35 +68,32 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
   const [parentSecretCode, setParentSecretCode] = useState<string>('');
   const [isParentLoading, setIsParentLoading] = useState<boolean>(false);
   const [parentErrorMsg, setParentErrorMsg] = useState<string | null>(null);
-  const [parentFailedAttempts, setParentFailedAttempts] = useState<number>(0);
-  const [parentLockoutTime, setParentLockoutTime] = useState<number | null>(null);
-  const [parentRemainingLockSeconds, setParentRemainingLockSeconds] = useState<number>(0);
+  const [parentRemainingLockSeconds, setParentRemainingLockSeconds] = useState<number>(() => {
+    return getParentLockoutStatus().remainingSeconds;
+  });
 
   // Secondary Specialized Staff Accordion
   const [showStaffCollapsible, setShowStaffCollapsible] = useState<boolean>(false);
   const [staffRoleKey, setStaffRoleKey] = useState<string>('teacher');
   const [staffUsername, setStaffUsername] = useState<string>('teacher');
-  const [staffPassword, setStaffPassword] = useState<string>('123');
+  const [staffPassword, setStaffPassword] = useState<string>('');
   const [showStaffPassword, setShowStaffPassword] = useState<boolean>(false);
   const [isStaffLoading, setIsStaffLoading] = useState<boolean>(false);
   const [staffErrorMsg, setStaffErrorMsg] = useState<string | null>(null);
 
-  // Lockout Timer Countdown
+  // Lockout Timer Countdown with sessionStorage synchronization
   useEffect(() => {
-    if (!parentLockoutTime) return;
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((parentLockoutTime - Date.now()) / 1000));
-      setParentRemainingLockSeconds(remaining);
-      if (remaining <= 0) {
-        setParentLockoutTime(null);
-        setParentFailedAttempts(0);
-      }
-    }, 1000);
+    const checkTimer = () => {
+      const status = getParentLockoutStatus();
+      setParentRemainingLockSeconds(status.remainingSeconds);
+    };
+    checkTimer();
+    const interval = setInterval(checkTimer, 1000);
     return () => clearInterval(interval);
-  }, [parentLockoutTime]);
+  }, []);
 
   // Handle Directorate Admin Login
-  const handleDirectorateSubmit = (e: React.FormEvent) => {
+  const handleDirectorateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!directorateUsername.trim() || !directoratePassword.trim()) {
       setDirErrorMsg('يرجى إدخال اسم المستخدم وكلمة المرور لمسئول المديرية');
@@ -105,20 +103,30 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
     setIsDirLoading(true);
     setDirErrorMsg(null);
 
-    setTimeout(() => {
-      const result = login(directorateUsername.trim(), directoratePassword);
-      setIsDirLoading(false);
+    // Call server API for HttpOnly cookie session
+    try {
+      await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: directorateUsername.trim(),
+          password: directoratePassword,
+        }),
+      }).catch(() => {});
+    } catch {}
 
-      if (result.success && result.user) {
-        onLoginSuccess(result.user, 'directorate');
-      } else {
-        setDirErrorMsg(result.error || 'بيانات الدخول غير صحيحة. يرجى التحقق من اسم المستخدم وكلمة المرور.');
-      }
-    }, 350);
+    const result = login(directorateUsername.trim(), directoratePassword);
+    setIsDirLoading(false);
+
+    if (result.success && result.user) {
+      onLoginSuccess(result.user, 'directorate');
+    } else {
+      setDirErrorMsg(result.error || 'بيانات الدخول غير صحيحة. يرجى التحقق من اسم المستخدم وكلمة المرور.');
+    }
   };
 
   // Handle Principal Login (School Code + PIN)
-  const handlePrincipalSubmit = (e: React.FormEvent) => {
+  const handlePrincipalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!principalUsername.trim() || !principalPassword.trim()) {
       setPrincErrorMsg('يرجى إدخال كود المدرسة الوزاري والرقم السري المعتمد');
@@ -128,90 +136,54 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
     setIsPrincLoading(true);
     setPrincErrorMsg(null);
 
-    setTimeout(() => {
-      const result = login(principalUsername.trim(), principalPassword);
-      setIsPrincLoading(false);
+    // Call server API for HttpOnly cookie session
+    try {
+      await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: principalUsername.trim(),
+          password: principalPassword,
+        }),
+      }).catch(() => {});
+    } catch {}
 
-      if (result.success && result.user) {
-        onLoginSuccess(result.user, 'principal');
-      } else {
-        setPrincErrorMsg(result.error || 'بيانات المدرسة غير صحيحة. تأكد من كود المدرسة المالي والإحصائي والرقم السري المعتمد من المديرية.');
-      }
-    }, 350);
+    const result = login(principalUsername.trim(), principalPassword);
+    setIsPrincLoading(false);
+
+    if (result.success && result.user) {
+      onLoginSuccess(result.user, 'principal');
+    } else {
+      setPrincErrorMsg(result.error || 'بيانات المدرسة غير صحيحة. تأكد من كود المدرسة المالي والإحصائي والرقم السري المعتمد من المديرية.');
+    }
   };
 
   // Handle Parent 2FA Login (National ID + School Secret Code)
-  const handleParentSubmit = (e: React.FormEvent) => {
+  const handleParentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setParentErrorMsg(null);
-
-    if (parentLockoutTime && Date.now() < parentLockoutTime) {
-      setParentErrorMsg(`تم قفل محاولات الدخول مؤقتاً لحماية خصوصية بيانات الطالب. يرجى الانتظار ${parentRemainingLockSeconds} ثانية.`);
-      return;
-    }
-
-    const cleanNid = parentNationalId.trim().replace(/\s+/g, '');
-    const cleanCode = parentSecretCode.trim().toUpperCase();
-
-    if (!cleanNid || cleanNid.length < 10) {
-      setParentErrorMsg('يرجى إدخال الرقم القومي الصحيح للطالب (14 رقماً).');
-      return;
-    }
-
-    if (!cleanCode) {
-      setParentErrorMsg('يرجى إدخال الرقم السري الذي تمنحه المدرسة لولي الأمر.');
-      return;
-    }
-
     setIsParentLoading(true);
 
-    setTimeout(() => {
+    try {
+      const res = await verifyParentCredentials(parentNationalId, parentSecretCode, schoolConfig.id);
       setIsParentLoading(false);
-      const allStudents = getStudents();
-      const matched = allStudents.find(
-        (s) =>
-          s.nationalId.trim() === cleanNid &&
-          (s.parentAccessCode?.trim().toUpperCase() === cleanCode ||
-            cleanCode === 'DEMO12' ||
-            cleanCode === s.studentCode.trim().toUpperCase())
-      );
 
-      if (matched) {
-        logAuditEvent({
-          actorId: `parent_${matched.id}`,
-          actorName: `ولي أمر الطالب (${matched.fullName})`,
-          action: 'parent_portal_2fa_login',
-          entity: 'parent_portal',
-          entityId: matched.id,
-        });
-
-        const parentUser: User = {
-          id: `parent_${matched.id}`,
-          name: `ولي أمر الطالب / ${matched.fullName}`,
-          username: `parent_${matched.studentCode}`,
-          role: 'parent',
-          roleTitle: 'ولي الأمر (دخول ثنائي معتمد)',
-          schoolId: schoolConfig.id,
-        };
-
-        onLoginSuccess(parentUser, 'parent');
+      if (res.success && res.user) {
+        onLoginSuccess(res.user, 'parent');
       } else {
-        const nextFail = parentFailedAttempts + 1;
-        setParentFailedAttempts(nextFail);
-
-        if (nextFail >= 5) {
-          setParentLockoutTime(Date.now() + 5 * 60 * 1000);
-          setParentRemainingLockSeconds(300);
-          setParentErrorMsg('تم تجاوز الحد الأقصى للمحاولات غير الصحيحة (5 محاولات). تم قفل الدخول مؤقتاً لمدة 5 دقائق لحماية الخصوصية.');
-        } else {
-          setParentErrorMsg(`بيانات الدخول غير صحيحة. يرجى التأكد من الرقم القومي للطالب والرقم السري الصادر من المدرسة. (المحاولات المتبقية: ${5 - nextFail})`);
+        setParentErrorMsg(res.error || 'بيانات الدخول غير صحيحة.');
+        if (res.isLocked && res.remainingSeconds) {
+          setParentRemainingLockSeconds(res.remainingSeconds);
         }
       }
-    }, 400);
+    } catch {
+      setIsParentLoading(false);
+      setParentErrorMsg('تعذر التحقق من بيانات الدخول');
+    }
   };
 
   // Handle Specialized Staff Login
-  const handleStaffSubmit = (e: React.FormEvent) => {
+  const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffUsername.trim() || !staffPassword.trim()) {
       setStaffErrorMsg('يرجى إدخال اسم المستخدم وكلمة المرور');
@@ -221,22 +193,32 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
     setIsStaffLoading(true);
     setStaffErrorMsg(null);
 
-    setTimeout(() => {
-      const result = login(staffUsername.trim(), staffPassword);
-      setIsStaffLoading(false);
+    // Call server API for HttpOnly cookie session
+    try {
+      await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: staffUsername.trim(),
+          password: staffPassword,
+        }),
+      }).catch(() => {});
+    } catch {}
 
-      if (result.success && result.user) {
-        let detectedPortal: PortalType = 'teacher';
-        if (result.user.role === 'dept_head') detectedPortal = 'dept_head';
-        else if (result.user.role === 'social_worker') detectedPortal = 'social_worker';
-        else if (result.user.role === 'affairs_deputy' || result.user.role === 'affairs_officer') detectedPortal = 'affairs';
-        else if (result.user.role === 'external_verifier' || result.user.isInternalVerifier) detectedPortal = 'competencies';
+    const result = login(staffUsername.trim(), staffPassword);
+    setIsStaffLoading(false);
 
-        onLoginSuccess(result.user, detectedPortal);
-      } else {
-        setStaffErrorMsg(result.error || 'بيانات الدخول غير صحيحة للكادر الفني.');
-      }
-    }, 350);
+    if (result.success && result.user) {
+      let detectedPortal: PortalType = 'teacher';
+      if (result.user.role === 'dept_head') detectedPortal = 'dept_head';
+      else if (result.user.role === 'social_worker') detectedPortal = 'social_worker';
+      else if (result.user.role === 'affairs_deputy' || result.user.role === 'affairs_officer') detectedPortal = 'affairs';
+      else if (result.user.role === 'external_verifier' || result.user.isInternalVerifier) detectedPortal = 'competencies';
+
+      onLoginSuccess(result.user, detectedPortal);
+    } else {
+      setStaffErrorMsg(result.error || 'بيانات الدخول غير صحيحة للكادر الفني.');
+    }
   };
 
   // Quick Demo Pre-fill helpers
@@ -316,7 +298,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
             className={`p-4 rounded-3xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
               activePortal === 'directorate'
                 ? 'bg-amber-500/15 border-amber-400 text-white ring-2 ring-amber-400/50 shadow-xl'
-                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
             }`}
           >
             <div className="flex items-center justify-between w-full mb-3">
@@ -355,7 +337,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
             className={`p-4 rounded-3xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
               activePortal === 'principal'
                 ? 'bg-emerald-500/15 border-emerald-400 text-white ring-2 ring-emerald-400/50 shadow-xl'
-                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
             }`}
           >
             <div className="flex items-center justify-between w-full mb-3">
@@ -394,7 +376,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
             className={`p-4 rounded-3xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
               activePortal === 'parent'
                 ? 'bg-blue-600/20 border-blue-400 text-white ring-2 ring-blue-400/50 shadow-xl'
-                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
             }`}
           >
             <div className="flex items-center justify-between w-full mb-3">
@@ -492,6 +474,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                       onClick={() => setShowDirPassword(!showDirPassword)}
                       className="absolute left-3 top-3 text-slate-400 hover:text-white transition cursor-pointer"
                       title={showDirPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                      aria-label={showDirPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
                     >
                       {showDirPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-amber-400" />}
                     </button>
@@ -597,6 +580,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                       onClick={() => setShowPrincPassword(!showPrincPassword)}
                       className="absolute left-3 top-3 text-slate-400 hover:text-white transition cursor-pointer"
                       title={showPrincPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                      aria-label={showPrincPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
                     >
                       {showPrincPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-emerald-400" />}
                     </button>
@@ -697,7 +681,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                       type="text"
                       required
                       maxLength={14}
-                      disabled={Boolean(parentLockoutTime)}
+                      disabled={parentRemainingLockSeconds > 0}
                       placeholder="أدخل الرقم القومي للطالب (14 رقماً)..."
                       value={parentNationalId}
                       onChange={(e) => setParentNationalId(e.target.value)}
@@ -714,7 +698,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                     <input
                       type="text"
                       required
-                      disabled={Boolean(parentLockoutTime)}
+                      disabled={parentRemainingLockSeconds > 0}
                       placeholder="أدخل الرقم السري الصادر من إدارة المدرسة للطالب..."
                       value={parentSecretCode}
                       onChange={(e) => setParentSecretCode(e.target.value)}
@@ -728,7 +712,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
 
                 <button
                   type="submit"
-                  disabled={isParentLoading || Boolean(parentLockoutTime)}
+                  disabled={isParentLoading || parentRemainingLockSeconds > 0}
                   className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black py-3 rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 mt-2"
                 >
                   {isParentLoading ? (
@@ -860,6 +844,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                         type="button"
                         onClick={() => setShowStaffPassword(!showStaffPassword)}
                         className="absolute left-2.5 top-2.5 text-slate-400 hover:text-white"
+                        aria-label={showStaffPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
                       >
                         {showStaffPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
@@ -869,7 +854,7 @@ export const PortalSelectionScreen: React.FC<PortalSelectionScreenProps> = ({
                   <button
                     type="submit"
                     disabled={isStaffLoading}
-                    className="w-full bg-slate-800 hover:bg-slate-750 text-white font-bold py-2 rounded-xl text-xs transition cursor-pointer"
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl text-xs transition cursor-pointer"
                   >
                     {isStaffLoading ? 'جارٍ التحقق...' : 'دخول بحساب الكادر المدرسي'}
                   </button>

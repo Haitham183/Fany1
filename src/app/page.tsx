@@ -77,7 +77,7 @@ function GatewayContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-800 font-['Cairo'] transition-opacity duration-200">
         <div className="text-center space-y-3 p-6 rounded-2xl bg-white shadow-sm border border-slate-200/80">
-          <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-10 h-10 border-[3px] border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-xs font-bold text-slate-600">جارٍ تهيئة بوابة المدارس الفنية المصرية...</p>
         </div>
       </div>
@@ -89,7 +89,7 @@ function GatewayContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-800 font-['Cairo'] transition-opacity duration-200">
         <div className="text-center space-y-3 p-6 rounded-2xl bg-white shadow-sm border border-slate-200/80">
-          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-10 h-10 border-[3px] border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-xs font-bold text-slate-700">جارٍ الانتقال إلى مساحة العمل المصرح بها...</p>
         </div>
       </div>

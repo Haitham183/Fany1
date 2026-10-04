@@ -53,15 +53,13 @@ import {
   Shield,
 } from 'lucide-react';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
+import { verifyParentCredentials, getParentLockoutStatus } from '@/lib/parentAuth';
 
 interface ParentPortalViewProps {
   onBackToLogin?: () => void;
   initialStudentId?: string;
   isStandalone?: boolean;
 }
-
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   onBackToLogin,
@@ -72,9 +70,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const [secretCodeInput, setSecretCodeInput] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [failedAttempts, setFailedAttempts] = useState<number>(0);
-  const [lockoutTime, setLockoutTime] = useState<number | null>(null);
-  const [remainingLockSeconds, setRemainingLockSeconds] = useState<number>(0);
+  const [remainingLockSeconds, setRemainingLockSeconds] = useState<number>(() => {
+    return getParentLockoutStatus().remainingSeconds;
+  });
 
   // Load database snapshot
   const config: SchoolConfig = useMemo(() => getSchoolConfig(), []);
@@ -87,19 +85,16 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const assessments: StudentCompetencyAssessment[] = useMemo(() => getCompetencyAssessments(), []);
   const violations: WorkshopViolationRecord[] = useMemo(() => getWorkshopViolations(), []);
 
-  // Lockout countdown effect
+  // Lockout countdown effect with sessionStorage synchronization
   useEffect(() => {
-    if (!lockoutTime) return;
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((lockoutTime - Date.now()) / 1000));
-      setRemainingLockSeconds(remaining);
-      if (remaining <= 0) {
-        setLockoutTime(null);
-        setFailedAttempts(0);
-      }
-    }, 1000);
+    const checkTimer = () => {
+      const status = getParentLockoutStatus();
+      setRemainingLockSeconds(status.remainingSeconds);
+    };
+    checkTimer();
+    const interval = setInterval(checkTimer, 1000);
     return () => clearInterval(interval);
-  }, [lockoutTime]);
+  }, []);
 
   // Initialize with student if provided
   useEffect(() => {
@@ -111,61 +106,25 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
     }
   }, [initialStudentId, students]);
 
-  const handleSecureLogin = (e?: React.FormEvent) => {
+  const handleSecureLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg(null);
 
-    if (lockoutTime && Date.now() < lockoutTime) {
-      setErrorMsg(`تم قفل محاولات الدخول مؤقتاً لحماية البيانات. يرجى الانتظار لمدة ${remainingLockSeconds} ثانية.`);
-      return;
-    }
-
-    const cleanNid = nationalIdInput.trim().replace(/\s+/g, '');
-    const cleanCode = secretCodeInput.trim().toUpperCase();
-
-    if (!cleanNid || cleanNid.length < 10) {
-      setErrorMsg('يرجى إدخال الرقم القومي الصحيح للطالب (14 رقماً).');
-      return;
-    }
-
-    if (!cleanCode) {
-      setErrorMsg('يرجى إدخال كود الدخول السري الصادر من المدرسة للطالب.');
-      return;
-    }
-
-    // Secure Verification: Student must match both National ID AND secret access code
-    const found = students.find(
-      (s) =>
-        s.nationalId.trim() === cleanNid &&
-        (s.parentAccessCode?.trim().toUpperCase() === cleanCode || cleanCode === 'DEMO12' || cleanCode === s.studentCode.trim().toUpperCase())
-    );
-
-    if (found) {
-      setSelectedStudent(found);
-      setErrorMsg(null);
-      setFailedAttempts(0);
-      setLockoutTime(null);
-
-      logAuditEvent({
-        actorId: `parent_${found.id}`,
-        actorName: `ولي أمر الطالب (${found.fullName})`,
-        action: 'parent_portal_authenticated',
-        entity: 'student_portal',
-        entityId: found.id,
-      });
-    } else {
-      const nextFail = failedAttempts + 1;
-      setFailedAttempts(nextFail);
-      setSelectedStudent(null);
-
-      if (nextFail >= MAX_FAILED_ATTEMPTS) {
-        const lockUntil = Date.now() + LOCKOUT_DURATION_MS;
-        setLockoutTime(lockUntil);
-        setRemainingLockSeconds(300);
-        setErrorMsg('تم تجاوز الحد الأقصى للمحاولات غير الصحيحة (5 محاولات). تم قفل الدخول مؤقتاً لمدة 5 دقائق لحماية الخصوصية.');
+    try {
+      const res = await verifyParentCredentials(nationalIdInput, secretCodeInput, config.id);
+      if (res.success && res.student) {
+        setSelectedStudent(res.student);
+        setErrorMsg(null);
       } else {
-        setErrorMsg(`بيانات الدخول غير صحيحة. يرجى التأكد من الرقم القومي وكود الدخول السري. (المحاولات المتبقية: ${MAX_FAILED_ATTEMPTS - nextFail})`);
+        setSelectedStudent(null);
+        setErrorMsg(res.error || 'بيانات الدخول غير صحيحة.');
+        if (res.isLocked && res.remainingSeconds) {
+          setRemainingLockSeconds(res.remainingSeconds);
+        }
       }
+    } catch {
+      setSelectedStudent(null);
+      setErrorMsg('تعذر التحقق من بيانات الدخول.');
     }
   };
 
@@ -341,7 +300,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                       placeholder="الرقم القومي للطالب (14 رقماً)..."
                       value={nationalIdInput}
                       onChange={(e) => setNationalIdInput(e.target.value)}
-                      disabled={Boolean(lockoutTime)}
+                      disabled={remainingLockSeconds > 0}
                       className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden disabled:opacity-50 font-mono"
                     />
                   </div>
@@ -353,7 +312,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                       placeholder="الرقم السري الذي تمنحه له المدرسة..."
                       value={secretCodeInput}
                       onChange={(e) => setSecretCodeInput(e.target.value)}
-                      disabled={Boolean(lockoutTime)}
+                      disabled={remainingLockSeconds > 0}
                       className="w-full bg-slate-950/90 border border-slate-700 rounded-2xl pr-11 pl-4 py-3 text-sm text-white placeholder-slate-500 font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden disabled:opacity-50 font-mono uppercase"
                     />
                   </div>
@@ -366,7 +325,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
                   <button
                     type="submit"
-                    disabled={Boolean(lockoutTime)}
+                    disabled={remainingLockSeconds > 0}
                     className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 text-slate-950 font-black px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 text-sm cursor-pointer shadow-lg shadow-amber-500/10 shrink-0"
                   >
                     <Lock className="w-4 h-4" />

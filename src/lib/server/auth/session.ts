@@ -17,8 +17,20 @@ export interface AuthSessionPayload {
 const SESSION_COOKIE_NAME = 'egyptian_tech_school_session';
 const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // 8 hours working shift
 
+let cachedDevSecret: string | null = null;
+
 function getJwtSecretKey(): Uint8Array {
-  const secret = process.env.AUTH_SECRET || 'fany_governorate_auth_secret_key_prod_2026_super_safe_32_bytes_min';
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('CRITICAL SECURITY ERROR: AUTH_SECRET environment variable is missing in production!');
+    }
+    if (!cachedDevSecret) {
+      cachedDevSecret = `dev_secret_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      console.warn('⚠️ [SECURITY WARNING] AUTH_SECRET is not set in environment. Using ephemeral key.');
+    }
+    return new TextEncoder().encode(cachedDevSecret);
+  }
   return new TextEncoder().encode(secret);
 }
 

@@ -64,9 +64,13 @@ export function PermissionsMatrixView({
           });
           setMatrix(map);
         }
+      } else if (res.status === 401 || res.status === 403) {
+        setErrorMessage('غير مصرح بتعديل مصفوفة الصلاحيات أو انتهت صلاحية الجلسة. تم تحميل القيم الافتراضية.');
+      } else {
+        setErrorMessage('تعذر جلب الصلاحيات المخصصة من الخادم، يتم استخدام الإعدادات الافتراضية.');
       }
     } catch {
-      // Fallback to default in-memory matrix
+      setErrorMessage('خطأ في الاتصال بالخادم، يتم عرض مصفوفة الصلاحيات الافتراضية.');
     } finally {
       setIsLoading(false);
     }

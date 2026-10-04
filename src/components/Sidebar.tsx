@@ -55,7 +55,7 @@ interface SidebarProps {
 interface NavItem {
   id: string;
   label: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   badge?: string | number | null;
   badgeColor?: string;
   visible: boolean;

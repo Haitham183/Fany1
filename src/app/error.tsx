@@ -28,7 +28,7 @@ export default function GlobalRouteError({
             تم رصد عدم تطابق مؤقت في تهيئة الجلسة بالمتصفح. يمكنك استعادة الصفحة فوراً بالنقر أدناه.
           </p>
           {error?.message && process.env.NODE_ENV !== 'production' && (
-            <div className="bg-slate-950 p-2 rounded-xl text-[10px] text-red-300 font-mono text-left overflow-x-auto">
+            <div className="bg-slate-950 p-2 rounded-xl text-[10px] text-red-300 font-mono text-start overflow-x-auto">
               {error.message}
             </div>
           )}

@@ -721,15 +721,27 @@ export interface OfficialNotice {
 // سجل التدقيق الأمني المعتمد (Insert-Only Audit Log)
 export interface AuditLogEntry {
   id: string;
+  schoolId?: string | null;
   school_id?: string;
-  actor_id: string;
+  actorId?: string;
+  actor_id?: string;
+  actorName?: string;
   actor_name?: string;
-  action: string;      // e.g., 'attendance_record', 'grade_entry', 'notice_issued', 'expulsion', 'exclusion_override', 'sensitive_data_access', 'grievance_decided'
-  entity: string;      // e.g., 'student', 'attendance', 'competency_assessment', 'social_case', 'notice'
+  actorRole?: string;
+  action: string;
+  resource?: string;
+  entity?: string;
+  resourceId?: string | null;
   entity_id?: string;
+  beforeJson?: Record<string, unknown> | null;
   old_value?: any;
+  afterJson?: Record<string, unknown> | null;
   new_value?: any;
-  created_at: string;
+  details?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt?: Date | string;
+  created_at?: string;
 }
 
 export interface DailyMorningCensus {

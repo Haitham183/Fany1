@@ -62,6 +62,32 @@ export async function recordAuditLog(entry: AuditLogEntry): Promise<AuditLogEntr
   // Push to memory registry
   inMemoryAuditLogs.unshift(finalEntry);
 
+  // Attempt persistent database storage in PostgreSQL via Prisma
+  try {
+    const { prisma } = await import('@/lib/server/db/prisma');
+    if (prisma) {
+      await prisma.auditLog.create({
+        data: {
+          id: finalEntry.id,
+          schoolId: finalEntry.schoolId,
+          actorId: finalEntry.actorId,
+          actorName: finalEntry.actorName,
+          actorRole: finalEntry.actorRole,
+          action: finalEntry.action,
+          resource: finalEntry.resource,
+          resourceId: finalEntry.resourceId,
+          beforeJson: finalEntry.beforeJson ? (finalEntry.beforeJson as any) : undefined,
+          afterJson: finalEntry.afterJson ? (finalEntry.afterJson as any) : undefined,
+          details: finalEntry.details,
+          ipAddress: finalEntry.ipAddress,
+          userAgent: finalEntry.userAgent,
+        },
+      }).catch(() => {});
+    }
+  } catch {
+    // Non-blocking database fallback
+  }
+
   // If running in development or console logging is enabled
   if (process.env.NODE_ENV !== 'test') {
     const timestamp = finalEntry.createdAt?.toISOString();

@@ -112,12 +112,13 @@ function PortalShellContent({
   const [activePortal, setActivePortal] = useState<PortalType | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUserState] = useState<User>({
-    id: 'user_directorate',
-    name: 'مسئول مديرية التربية والتعليم',
-    username: 'directorate',
-    role: 'directorate_admin',
-    roleTitle: 'مسئول مديرية التربية والتعليم',
+    id: '',
+    name: 'مستخدم غير مسجل',
+    username: '',
+    role: 'teacher',
+    roleTitle: 'جاري التحقق...',
   });
+  const [selectedAttendanceClassId, setSelectedAttendanceClassId] = useState<string | undefined>(undefined);
   const [students, setStudents] = useState<Student[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -373,43 +374,26 @@ function PortalShellContent({
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setInspectingSchool(null);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    } catch {}
     logout();
     setIsAuthenticated(false);
     setActivePortal(null);
     router.push('/');
   };
 
-  const handleSwitchPortal = () => {
-    setInspectingSchool(null);
-    logout();
-    setIsAuthenticated(false);
-    setActivePortal(null);
-    router.push('/');
-  };
+  const handleSwitchPortal = handleLogout;
 
   const handlePortalLoginSuccess = (user: User, portal: PortalType) => {
     setInspectingSchool(null);
     setCurrentUserState(user);
     setActivePortal(portal);
     setIsAuthenticated(true);
-
-    if (portal === 'directorate' || user.role === 'directorate_admin') {
-      handleNavigate('directorate', null, user);
-    } else if (portal === 'teacher' || user.role === 'teacher') {
-      handleNavigate('attendance', null, user);
-    } else if (portal === 'dept_head' || user.role === 'dept_head') {
-      handleNavigate('departments', null, user);
-    } else if (portal === 'competencies' || !!user.isInternalVerifier) {
-      handleNavigate('competencies', null, user);
-    } else if (portal === 'social_worker' || user.role === 'social_worker') {
-      handleNavigate('social_portal', null, user);
-    } else if (portal === 'affairs' || user.role === 'affairs_deputy' || user.role === 'affairs_officer') {
-      handleNavigate('affairs', null, user);
-    } else {
-      handleNavigate('dashboard', null, user);
-    }
+    const defaultTab = getDefaultTabForRole(user.role);
+    handleNavigate(defaultTab, null, user);
   };
 
   const handleResetData = async () => {
@@ -426,7 +410,7 @@ function PortalShellContent({
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-800 font-['Cairo'] transition-opacity duration-200">
         <div className="text-center space-y-3 p-6 rounded-2xl bg-white shadow-sm border border-slate-200/80">
-          <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-10 h-10 border-[3px] border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-xs font-bold text-slate-600">جارٍ تجهيز المنظومة المدرسية...</p>
         </div>
       </div>
@@ -482,6 +466,7 @@ function PortalShellContent({
           handleNavigate('student_report', undefined, undefined, studentId);
         }}
         onSelectStudentAttendance={(classId) => {
+          setSelectedAttendanceClassId(classId);
           handleNavigate('attendance');
         }}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
@@ -638,6 +623,7 @@ function PortalShellContent({
               students={authorizedStudents}
               departments={authorizedDepartments}
               schoolConfig={schoolConfig}
+              initialClassId={selectedAttendanceClassId}
               onAttendanceSaved={() => {
                 refreshAllData();
               }}

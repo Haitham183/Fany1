@@ -47,6 +47,7 @@ interface TeacherAttendanceTakerProps {
   students: Student[];
   departments: Department[];
   schoolConfig?: SchoolConfig;
+  initialClassId?: string;
   onAttendanceSaved: (count: number) => void;
   onNavigateToNotices?: () => void;
 }
@@ -123,6 +124,7 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
   students,
   departments,
   schoolConfig: propSchoolConfig,
+  initialClassId,
   onAttendanceSaved,
   onNavigateToNotices,
 }) => {
@@ -148,8 +150,14 @@ export const TeacherAttendanceTaker: React.FC<TeacherAttendanceTakerProps> = ({
   });
 
   const [selectedClassId, setSelectedClassId] = useState<string>(
-    availableClasses[0]?.id || classes[0]?.id || ''
+    initialClassId || availableClasses[0]?.id || classes[0]?.id || ''
   );
+
+  useEffect(() => {
+    if (initialClassId) {
+      setSelectedClassId(initialClassId);
+    }
+  }, [initialClassId]);
   const [anchorDate, setAnchorDate] = useState<Date>(new Date());
   const [periodType, setPeriodType] = useState<PeriodType>('workshop');
   const [periodNumber, setPeriodNumber] = useState<number>(1);

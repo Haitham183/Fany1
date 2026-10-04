@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 
 export const metadata: Metadata = {
   title: 'النظام الإلكتروني لإدارة الحضور وشئون الطلاب - التعليم الفني الصناعي',
@@ -27,6 +28,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="min-h-screen bg-slate-50 text-slate-900 font-['Cairo'] antialiased">
+        <ServiceWorkerRegister />
         {children}
       </body>
     </html>
