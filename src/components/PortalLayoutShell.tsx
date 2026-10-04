@@ -54,6 +54,8 @@ import { StudentReportCardView } from '@/components/StudentReportCardView';
 import { ParentPortalView } from '@/components/ParentPortalView';
 import { AiPredictionDashboard } from '@/components/AiPredictionDashboard';
 import { SocialWorkerPortalView } from '@/components/SocialWorkerPortalView';
+import { PermissionsMatrixView } from '@/components/PermissionsMatrixView';
+import { AuditLogsView } from '@/components/AuditLogsView';
 import { initOfflineSyncEngine } from '@/lib/offlineSyncEngine';
 import { PortalSelectionScreen } from '@/components/PortalSelectionScreen';
 import { DeveloperCreditFooter } from '@/components/DeveloperCreditFooter';
@@ -748,6 +750,20 @@ function PortalShellContent({
               classes={classes}
               currentUser={currentUser}
               onUsersChanged={refreshAllData}
+            />
+          )}
+
+          {activeTab === 'roles' && (
+            <PermissionsMatrixView
+              currentUserRole={currentUser.role}
+              isInspectionMode={!!inspectingSchool}
+            />
+          )}
+
+          {activeTab === 'audit_logs' && (
+            <AuditLogsView
+              currentUserRole={currentUser.role}
+              currentSchoolId={inspectingSchool ? inspectingSchool.id : (currentUser.role === 'directorate_admin' ? null : 'sch_cairo_abbassia')}
             />
           )}
 

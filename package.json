@@ -10,15 +10,19 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.2.1",
+    "@prisma/client": "^6.19.3",
     "@supabase/supabase-js": "^2.116.0",
     "clsx": "^2.1.1",
     "dexie": "^4.4.6",
+    "jose": "^6.2.12",
     "lucide-react": "^1.16.0",
     "next": "15.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.2",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.9",
@@ -28,6 +32,7 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.6",
     "postcss": "^8.5.3",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4.0.9",
     "typescript": "^5.8.2",
     "vitest": "^5.0.2"

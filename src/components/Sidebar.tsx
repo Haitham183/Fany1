@@ -28,6 +28,8 @@ import {
   Sparkles,
   Search,
   School,
+  ShieldCheck,
+  History,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -185,6 +187,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               id: 'directorate_inspection',
               label: 'سجل التفتيش والمتابعة الميدانية',
               icon: ShieldAlert,
+              visible: true,
+            },
+            {
+              id: 'audit_logs',
+              label: 'سجل التدقيق والتتبع العام',
+              icon: History,
               visible: true,
             },
           ],
@@ -580,6 +588,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'users',
           label: 'حسابات فريق العمل',
           icon: UserCheck,
+          visible: true,
+        },
+        {
+          id: 'roles',
+          label: 'مصفوفة الصلاحيات (RBAC)',
+          icon: ShieldCheck,
+          visible: true,
+        },
+        {
+          id: 'audit_logs',
+          label: 'سجل التدقيق (Audit Log)',
+          icon: History,
           visible: true,
         },
       ],

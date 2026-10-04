@@ -28,6 +28,8 @@ export type CanonicalTabId =
   | 'directorate_attendance'
   | 'directorate_circulars'
   | 'directorate_inspection'
+  | 'roles'
+  | 'audit_logs'
   | 'parent_portal';
 
 export function normalizeTabId(rawTab: string): CanonicalTabId {
@@ -160,9 +162,22 @@ export function normalizeTabId(rawTab: string): CanonicalTabId {
     case 'users':
     case 'user_management':
     case 'team':
-    case 'permissions':
     case 'accounts':
       return 'users';
+
+    // 16b. Permissions & Custom Roles Matrix
+    case 'roles':
+    case 'permissions':
+    case 'roles_matrix':
+    case 'permissions_matrix':
+    case 'rbac':
+      return 'roles';
+
+    // 16c. Audit Logs
+    case 'audit_logs':
+    case 'audit':
+    case 'logs':
+      return 'audit_logs';
 
     // 17. Parent Portal
     case 'parent_portal':
@@ -258,6 +273,10 @@ export function tabToPath(rawTab: CanonicalTabId | string): string {
       return '/settings';
     case 'users':
       return '/users';
+    case 'roles':
+      return '/roles';
+    case 'audit_logs':
+      return '/audit-logs';
     case 'parent_portal':
       return '/parent';
     default:
@@ -367,6 +386,15 @@ export function pathToTab(pathname: string): CanonicalTabId {
     case 'users':
       return 'users';
 
+    case 'roles':
+    case 'permissions':
+      return 'roles';
+
+    case 'audit-logs':
+    case 'audit_logs':
+    case 'audit':
+      return 'audit_logs';
+
     default:
       return normalizeTabId(clean);
   }
@@ -460,6 +488,14 @@ export const TAB_META: Record<CanonicalTabId, { label: string; description: stri
   directorate_inspection: {
     label: 'سجل التفتيش والمتابعة الميدانية',
     description: 'توثيق تقارير لجان المتابعة الميدانية والسلامة والصحة المهنية بالورش',
+  },
+  roles: {
+    label: 'مصفوفة الصلاحيات (RBAC)',
+    description: 'ضبط وتخصيص صلاحيات الأدوار المدرسية لكل موديول',
+  },
+  audit_logs: {
+    label: 'سجل التدقيق (Audit Log)',
+    description: 'توثيق كامل للعمليات والتعديلات وحركات المعاينة الرسمية',
   },
   parent_portal: {
     label: 'بوابة ولي الأمر',

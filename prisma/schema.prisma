@@ -1,0 +1,364 @@
+// Prisma Schema for Egyptian Technical Education Governorate System
+// Multi-Tenant with Row-Level Security (RLS) support for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------------
+// 1. Directorate & Multi-School Tenancy
+// -------------------------------------------------------------
+
+model Directorate {
+  id          String   @id @default(uuid())
+  name        String   // e.g. "مديرية التربية والتعليم بمحافظة القاهرة"
+  governorate String   // e.g. "القاهرة"
+  code        String   @unique // e.g. "DIR-CAIRO"
+  address     String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schools     School[]
+
+  @@map("directorates")
+}
+
+enum TechnicalEducationType {
+  industrial_3y
+  industrial_5y
+  commercial_3y
+  commercial_5y
+  agricultural_3y
+  hospitality_3y
+  applied_technology
+  dual_education
+}
+
+enum ShiftType {
+  single_morning
+  two_shifts
+  full_day
+}
+
+enum WorkDaysScheme {
+  sun_to_thu
+  sat_to_thu
+}
+
+model School {
+  id                 String                 @id @default(uuid()) // tenant_id
+  directorateId      String
+  directorate        Directorate            @relation(fields: [directorateId], references: [id], onDelete: Cascade)
+  code               String                 @unique // كود المدرسة المالي والإحصائي بوزارة التربية والتعليم
+  name               String                 // اسم المدرسة الرسمي
+  educationalAdmin   String                 // الإدارة التعليمية (مثل: إدارة الوايلي، إدارة وسط)
+  systemType         TechnicalEducationType @default(industrial_3y)
+  shiftType          ShiftType              @default(single_morning)
+  workDaysScheme     WorkDaysScheme         @default(sun_to_thu)
+  principalName      String?
+  phone              String?
+  address            String?
+  isActive           Boolean                @default(true)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  settings           SchoolSettings?
+  users              User[]
+  roles              Role[]
+  departments        Department[]
+  classes            SchoolClass[]
+  students           Student[]
+  auditLogs          AuditLog[]
+
+  @@map("schools")
+}
+
+// -------------------------------------------------------------
+// 2. Configurable School Engine Settings (قواعد الحضور والغياب القابلة للضبط)
+// -------------------------------------------------------------
+
+model SchoolSettings {
+  id                            String   @id @default(uuid())
+  schoolId                      String   @unique
+  school                        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // مواعيد الإنذارات والغياب تبعا لقانون التعليم 139 لسنة 1981 [قابلة للتعديل وليست ثوابت]
+  warning1ConsecutiveDays        Int      @default(5)
+  warning1SeparateDays           Int      @default(10)
+  warning2ConsecutiveDays        Int      @default(10)
+  warning2SeparateDays           Int      @default(20)
+  expulsionConsecutiveDays       Int      @default(15)
+  expulsionSeparateDays          Int      @default(30)
+
+  // اشتراطات ونسب الحضور للجدارات المهنية
+  workshopMinAttendanceRate      Float    @default(85.0) // نسبة حضور الورش الإلزامية لدخول التقييم (85%)
+  generalMinAttendanceRate       Float    @default(75.0) // نسبة الحضور الكلية
+
+  // رسوم إعادة القيد والغرامات
+  reinstatementFeeAbsence        Float    @default(25.0)
+  reinstatementFeeFailure        Float    @default(35.0)
+  remedialProgramFeePerUnit      Float    @default(0.0)
+
+  // نسب عينات التحقق لمنظومة الجدارات
+  internalVerificationSampleRate Float    @default(15.0)
+  externalVerificationSampleRate Float    @default(10.0)
+
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  @@map("school_settings")
+}
+
+// -------------------------------------------------------------
+// 3. Academic Years & Semesters (الأعوام والفصول الدراسية المستقلة)
+// -------------------------------------------------------------
+
+model AcademicYear {
+  id        String         @id @default(uuid())
+  name      String         @unique // e.g. "2025/2026"
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  terms     AcademicTerm[]
+  classes   SchoolClass[]
+
+  @@map("academic_years")
+}
+
+model AcademicTerm {
+  id             String       @id @default(uuid())
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  code           String       // "term_1" | "term_2"
+  displayName    String       // "الفصل الدراسي الأول" | "الفصل الدراسي الثاني"
+  startDate      DateTime
+  endDate        DateTime
+  isActive       Boolean      @default(false)
+
+  // ميزة قفل التقييمات آخر الفصل بقرار المدير
+  isCbeLocked    Boolean      @default(false)
+  lockedAt       DateTime?
+  lockedBy       String?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([academicYearId, code])
+  @@map("academic_terms")
+}
+
+// -------------------------------------------------------------
+// 4. Authentication, Users & Permissions Matrix (المصادقة والصلاحيات)
+// -------------------------------------------------------------
+
+enum UserRoleCode {
+  directorate_admin   // مسئول مديرية التربية والتعليم بالمحافظة
+  principal           // مدير المدرسة الفنية
+  dept_head           // رئيس قسم تخصصي
+  affairs_deputy      // وكيل شئون الطلاب والامتحانات
+  affairs_officer     // عضو شئون طلاب
+  teacher             // معلم / مدرب ورش
+  social_worker       // أخصائي اجتماعي
+  parent              // ولي أمر / طالب
+}
+
+model User {
+  id                   String        @id @default(uuid())
+  schoolId             String?       // فارغ لمسئول المديرية، ومحدد للمدرسة
+  school               School?       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  username             String        @unique
+  passwordHash         String        // مشفر عبر Argon2id
+  fullName             String
+  nationalIdEncrypted  String?       // الرقم القومي مشفر بـ AES-256-GCM
+  nationalIdHash       String?       // Blind Index (HMAC-SHA256) لمنع التكرار
+  phone                String?
+  roleCode             UserRoleCode  @default(teacher)
+  customRoleId         String?
+  customRole           Role?         @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  departmentId         String?
+  department           Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  isInternalVerifier   Boolean       @default(false)
+  mustChangePassword   Boolean       @default(false)
+  failedLoginAttempts  Int           @default(0)
+  lockoutUntil         DateTime?
+  isActive             Boolean       @default(true)
+  lastLoginAt          DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  auditLogsActor       AuditLog[]    @relation("ActorAuditLogs")
+
+  @@index([schoolId])
+  @@index([username])
+  @@map("users")
+}
+
+model Role {
+  id           String       @id @default(uuid())
+  schoolId     String?      // فارغ للأدوار العامة بالمديرية، ومحدد لكل مدرسة لتخصيص أدوارها
+  school       School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  code         String
+  name         String       // e.g. "مشرف ورش الأقسام الميكانيكية"
+  description  String?
+  isSystemRole Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  permissions  Permission[]
+  users        User[]
+
+  @@unique([schoolId, code])
+  @@map("roles")
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module    String   // dashboard, students, attendance, competencies, notices, reports, settings, users, roles, audit_logs
+  canView   Boolean  @default(false)
+  canAdd    Boolean  @default(false)
+  canEdit   Boolean  @default(false)
+  canDelete Boolean  @default(false)
+  canExport Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roleId, module])
+  @@map("permissions")
+}
+
+// -------------------------------------------------------------
+// 5. Enterprise Audit Logging (سجل التدقيق الشامل)
+// -------------------------------------------------------------
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  schoolId    String?  // null if directorate-level action
+  school      School?  @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  actorId     String
+  actor       User     @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: Cascade)
+  actorName   String
+  actorRole   String
+  action      String   // LOGIN, LOGOUT, INSPECTION_ENTER, INSPECTION_EXIT, CREATE, UPDATE, DELETE, EXPORT, LOCK_TERM, RESET_PASSWORD
+  resource    String   // student, attendance, competency, role, permission, school_settings, inspection_session
+  resourceId  String?
+  beforeJson  Json?    // الحالة قبل التعديل
+  afterJson   Json?    // الحالة بعد التعديل
+  details     String?  // شرح مفصل بالعربية
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([schoolId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// -------------------------------------------------------------
+// 6. Departments & Classes Structure
+// -------------------------------------------------------------
+
+model Department {
+  id          String        @id @default(uuid())
+  schoolId    String
+  school      School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String        // e.g. "قسم تشغيل المعادن (خراطة وتفريز)"
+  code        String        // e.g. "MEC-01"
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  classes     SchoolClass[]
+  users       User[]
+  students    Student[]
+
+  @@unique([schoolId, code])
+  @@map("departments")
+}
+
+model SchoolClass {
+  id             String       @id @default(uuid())
+  schoolId       String
+  school         School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  departmentId   String
+  department     Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  gradeLevel     Int          // 1, 2, 3, 4, 5
+  name           String       // e.g. "1/1 كهرباء"
+  roomNumber     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  students       Student[]
+
+  @@unique([schoolId, academicYearId, name])
+  @@map("classes")
+}
+
+// -------------------------------------------------------------
+// 7. Student Entity Structure (بيانات الطلاب والتشفير)
+// -------------------------------------------------------------
+
+enum StudentEnrollmentStatus {
+  enrolled     // مقيد
+  transferred  // منقول
+  expelled     // مفصول
+  graduated    // متخرج
+}
+
+model Student {
+  id                       String                  @id @default(uuid())
+  schoolId                 String
+  school                   School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  departmentId             String
+  department               Department              @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  classId                  String
+  schoolClass              SchoolClass             @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  // الرقم القومي المصري المشفر أو البديل للوافدين
+  nationalIdEncrypted      String?                 // AES-256-GCM
+  nationalIdHash           String                  // HMAC-SHA256 Blind Index لمنع التكرار (Unique)
+  isNonEgyptian            Boolean                 @default(false)
+  passportOrTempCode       String?
+
+  studentCode              String                  // كود الطالب الوزاري
+  fullName                 String                  // الاسم رباعي
+  gender                   String                  // "male" | "female"
+  birthDate                DateTime
+  birthGovernorate         String                  // المحافظة المستخرجة من الرقم القومي
+
+  status                   StudentEnrollmentStatus @default(enrolled)
+  enrollmentDate           DateTime
+  guardianName             String
+  guardianPhone            String
+  guardianJob              String?
+  address                  String
+
+  // بيانات دخول ولي الأمر المؤمنة
+  parentPasswordHash       String?                 // Argon2id
+  parentMustChangePassword Boolean                 @default(true)
+  parentFailedAttempts     Int                     @default(0)
+  parentLockoutUntil       DateTime?
+
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+
+  @@unique([schoolId, nationalIdHash])
+  @@unique([schoolId, studentCode])
+  @@index([schoolId])
+  @@index([classId])
+  @@map("students")
+}
