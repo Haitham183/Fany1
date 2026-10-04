@@ -82,10 +82,10 @@ export function PortalLayoutShell(props: PortalLayoutShellProps) {
     <ToastProvider>
       <Suspense
         fallback={
-          <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white font-['Cairo']">
-            <div className="text-center space-y-3">
-              <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p className="text-sm font-bold text-slate-300">جارٍ تحميل البوابة...</p>
+          <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-800 font-['Cairo'] transition-opacity duration-200">
+            <div className="text-center space-y-3 p-6 rounded-2xl bg-white shadow-sm border border-slate-200/80">
+              <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-xs font-bold text-slate-600">جارٍ تهيئة البوابة...</p>
             </div>
           </div>
         }
@@ -105,18 +105,21 @@ function PortalShellContent({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [isClient, setIsClient] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isClient, setIsClient] = useState<boolean>(() => typeof window !== 'undefined');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return getIsAuthenticated();
+  });
   const [activePortal, setActivePortal] = useState<PortalType | null>(null);
   const [currentUser, setCurrentUserState] = useState<User>(() => getCurrentUser());
-  const [users, setUsers] = useState<User[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [notices, setNotices] = useState<OfficialNotice[]>([]);
-  const [socialCases, setSocialCases] = useState<SocialCaseRecord[]>([]);
-  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
+  const [users, setUsers] = useState<User[]>(() => (typeof window !== 'undefined' ? getUsers() : []));
+  const [students, setStudents] = useState<Student[]>(() => (typeof window !== 'undefined' ? getStudents() : []));
+  const [departments, setDepartments] = useState<Department[]>(() => (typeof window !== 'undefined' ? getDepartments() : []));
+  const [classes, setClasses] = useState<SchoolClass[]>(() => (typeof window !== 'undefined' ? getClasses() : []));
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => (typeof window !== 'undefined' ? getAttendance() : []));
+  const [notices, setNotices] = useState<OfficialNotice[]>(() => (typeof window !== 'undefined' ? getNotices() : []));
+  const [socialCases, setSocialCases] = useState<SocialCaseRecord[]>(() => (typeof window !== 'undefined' ? getSocialCases() : []));
+  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(() => (typeof window !== 'undefined' ? getSchoolConfig() : null));
   const [inspectingSchool, setInspectingSchool] = useState<SchoolTenant | null>(null);
 
   // Compute activeTab from pathname or props
@@ -241,6 +244,22 @@ function PortalShellContent({
     }
   }, [pathname, searchParams]);
 
+  // Listen for browser Back/Forward navigation to seamlessly switch tabs
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === 'undefined') return;
+      const currentTab = pathToTab(window.location.pathname);
+      setActiveTab(currentTab);
+      const urlParams = new URLSearchParams(window.location.search);
+      const idParam = urlParams.get('id');
+      if (idParam) {
+        setSelectedReportStudentId(idParam);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Role Access Guard: ensure current user can access the target route
   useEffect(() => {
     if (!isClient) return;
@@ -311,7 +330,15 @@ function PortalShellContent({
     if (paramId && normalized === 'student_report') {
       targetPath = `${targetPath}?id=${encodeURIComponent(paramId)}`;
     }
-    router.push(targetPath);
+
+    // Smooth SPA navigation: Update URL without destroying or unmounting the shell layout
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ tab: normalized, paramId }, '', targetPath);
+      }
+    } else {
+      router.push(targetPath);
+    }
   };
 
   const handleExitInspection = () => {
@@ -392,10 +419,10 @@ function PortalShellContent({
 
   if (!isClient || !schoolConfig) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white font-['Cairo']">
-        <div className="text-center space-y-3">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm font-bold text-slate-300">جارٍ تحميل المنظومة المدرسية...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-800 font-['Cairo'] transition-opacity duration-200">
+        <div className="text-center space-y-3 p-6 rounded-2xl bg-white shadow-sm border border-slate-200/80">
+          <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-bold text-slate-600">جارٍ تجهيز المنظومة المدرسية...</p>
         </div>
       </div>
     );
@@ -502,6 +529,7 @@ function PortalShellContent({
 
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 max-w-full overflow-y-auto custom-scrollbar transition-all duration-300">
+          <div key={activeTab} className="view-transition">
           {(activeTab === 'directorate' ||
             activeTab === 'directorate_schools' ||
             activeTab === 'directorate_competencies' ||
@@ -732,6 +760,7 @@ function PortalShellContent({
 
           {/* Signature Footer */}
           <DeveloperCreditFooter className="mt-10 pb-4" />
+          </div>
         </main>
       </div>
 

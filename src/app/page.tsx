@@ -25,10 +25,19 @@ export default function RootHomePage() {
 
 function GatewayContent() {
   const router = useRouter();
-  const [isClient, setIsClient] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const [isClient, setIsClient] = useState<boolean>(() => typeof window !== 'undefined');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return getIsAuthenticated();
+  });
+  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return getSchoolConfig();
+  });
+  const [users, setUsers] = useState<User[]>(() => {
+    if (typeof window === 'undefined') return [];
+    return getUsers();
+  });
 
   useEffect(() => {
     setIsClient(true);
@@ -75,22 +84,22 @@ function GatewayContent() {
 
   if (!isClient || !schoolConfig) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white font-['Cairo']">
-        <div className="text-center space-y-3">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm font-bold text-slate-300">جارٍ تهيئة بوابة المدارس الفنية المصرية...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-800 font-['Cairo'] transition-opacity duration-200">
+        <div className="text-center space-y-3 p-6 rounded-2xl bg-white shadow-sm border border-slate-200/80">
+          <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-bold text-slate-600">جارٍ تهيئة بوابة المدارس الفنية المصرية...</p>
         </div>
       </div>
     );
   }
 
-  // If already authenticated, show redirecting indicator while client router forwards
+  // If already authenticated, show redirecting indicator matching light theme
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white font-['Cairo']">
-        <div className="text-center space-y-3">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm font-bold text-slate-300">جارٍ الانتقال إلى مساحة العمل المصرح بها...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-800 font-['Cairo'] transition-opacity duration-200">
+        <div className="text-center space-y-3 p-6 rounded-2xl bg-white shadow-sm border border-slate-200/80">
+          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-bold text-slate-700">جارٍ الانتقال إلى مساحة العمل المصرح بها...</p>
         </div>
       </div>
     );

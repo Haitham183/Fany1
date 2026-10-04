@@ -39,10 +39,10 @@ export default function StandaloneParentPage() {
     <ToastProvider>
       <Suspense
         fallback={
-          <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white font-['Cairo']">
-            <div className="text-center space-y-2">
-              <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs text-slate-400">جارٍ تهيئة بوابة ولي الأمر والنتائج...</p>
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-800 font-['Cairo'] transition-opacity duration-200">
+            <div className="text-center space-y-3 p-6 rounded-2xl bg-white shadow-sm border border-slate-200/80">
+              <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs font-bold text-slate-600">جارٍ تهيئة بوابة ولي الأمر والنتائج...</p>
             </div>
           </div>
         }
