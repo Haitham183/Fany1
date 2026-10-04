@@ -1,5 +1,5 @@
-// Egyptian Technical Secondary School PWA Service Worker (V2 Full Offline & Push)
-const CACHE_NAME = 'egyptian-school-cache-v2';
+// Egyptian Technical Secondary School PWA Service Worker (V3 Resilient Offline & Chunk-Safe)
+const CACHE_NAME = 'egyptian-school-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -30,46 +30,74 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event - Stale-While-Revalidate with full offline fallback
+// Fetch Event - Resilient & Scheme-Safe
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
 
-  // Allow real-time Supabase API calls to go directly through network
-  if (url.origin.includes('supabase.co')) return;
+  let url;
+  try {
+    url = new URL(event.request.url);
+  } catch {
+    return;
+  }
 
+  // 1. CRITICAL: Ignore non-http/https schemes (chrome-extension://, moz-extension://, etc.)
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // 2. Bypass API routes, inspect, and Supabase real-time
+  if (url.pathname.startsWith('/api/') || url.origin.includes('supabase.co')) {
+    return;
+  }
+
+  // 3. Navigation requests (HTML documents): Network-First
+  // This guarantees that after deployments, the browser gets the latest HTML with current Next.js chunk hashes!
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone).catch(() => {});
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Offline fallback
+          return caches.match(event.request).then((cached) => cached || caches.match('/'));
+        })
+    );
+    return;
+  }
+
+  // 4. Static assets & Next.js chunks
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cached and refresh in background
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse);
-              });
-            }
-          })
-          .catch(() => {});
         return cachedResponse;
       }
 
       return fetch(event.request)
         .then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          if (
+            !networkResponse ||
+            networkResponse.status !== 200 ||
+            networkResponse.type !== 'basic'
+          ) {
             return networkResponse;
           }
+
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(event.request, responseToCache).catch(() => {});
           });
+
           return networkResponse;
         })
         .catch(() => {
-          // Offline fallback
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
-          }
           return caches.match(event.request);
         });
     })
